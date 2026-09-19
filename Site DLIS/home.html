@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DLIS — Avaliação de cimentação</title>
+
+  <!-- Etapa 1: estrutura sem CSS, scripts, dependências externas ou backend. -->
+  <!-- Convenção: ids e classes em kebab-case, com prefixo dlis-. -->
+  <!-- Etapa futura: inserir CSS inline, incluindo layout horizontal dos tracks. -->
+</head>
+
+<body>
+
+  <!-- Cabeçalho e seleção local de um arquivo RP66 V1. -->
+  <header id="dlis-header" class="dlis-header">
+    <h1>DLIS — Avaliação de cimentação</h1>
+
+    <section
+      id="dlis-upload"
+      class="dlis-section"
+      aria-labelledby="dlis-upload-title"
+    >
+      <h2 id="dlis-upload-title">Carregar arquivo DLIS</h2>
+
+      <div
+        id="dlis-drop-zone"
+        class="dlis-drop-zone"
+        aria-describedby="dlis-upload-help"
+      >
+        <label for="dlis-file-input">
+          Selecione um arquivo .dlis
+        </label>
+
+        <input
+          id="dlis-file-input"
+          class="dlis-file-input"
+          name="dlis-file"
+          type="file"
+          accept=".dlis"
+          aria-describedby="dlis-upload-help"
+        >
+
+        <p id="dlis-upload-help">
+          Arquivo DLIS (RP66 V1). Esta área receberá arquivos por
+          arrastar e soltar na próxima etapa.
+        </p>
+      </div>
+
+      <p
+        id="dlis-upload-status"
+        class="dlis-status"
+        role="status"
+      ></p>
+
+      <!--
+        JS futuro:
+        seleção/drop,
+        validação do formato,
+        leitura local
+        e tratamento de erros.
+      -->
+    </section>
+  </header>
+
+
+  <main id="dlis-main" class="dlis-main">
+
+    <!--
+      Metadados vazios:
+      preencher a partir do arquivo carregado,
+      sem poço fixo.
+    -->
+    <section
+      id="dlis-metadata"
+      class="dlis-section"
+      aria-labelledby="dlis-metadata-title"
+    >
+      <h2 id="dlis-metadata-title">
+        Metadados do poço
+      </h2>
+
+      <dl class="dlis-metadata-list">
+
+        <dt>Nome do poço</dt>
+        <dd id="dlis-well-name"></dd>
+
+        <dt>Campo</dt>
+        <dd id="dlis-field-name"></dd>
+
+        <dt>Empresa</dt>
+        <dd id="dlis-company-name"></dd>
+
+        <dt>Run</dt>
+        <dd id="dlis-run-name"></dd>
+
+      </dl>
+    </section>
+
+
+    <!--
+      Legendas textuais:
+      nenhuma cor é aplicada nesta etapa.
+    -->
+    <section
+      id="dlis-legend"
+      class="dlis-section"
+      aria-labelledby="dlis-legend-title"
+    >
+
+      <h2 id="dlis-legend-title">
+        Legenda e critérios de interpretação
+      </h2>
+
+
+      <!-- Classificação geral -->
+
+      <section
+        class="dlis-legend-group"
+        aria-labelledby="dlis-quality-title"
+      >
+        <h3 id="dlis-quality-title">
+          Classificação do ponto
+        </h3>
+
+        <ul class="dlis-quality-legend">
+
+          <li data-classification="good">
+            Bom — verde
+          </li>
+
+          <li data-classification="moderate">
+            Moderado — amarelo
+          </li>
+
+          <li data-classification="bad">
+            Ruim — vermelho
+          </li>
+
+        </ul>
+      </section>
+
+
+      <!-- CBL -->
+
+      <section
+        class="dlis-legend-group"
+        aria-labelledby="dlis-cbl-legend-title"
+      >
+
+        <h3 id="dlis-cbl-legend-title">
+          CBL — amplitude (mV)
+        </h3>
+
+        <ul>
+
+          <li>
+            Amplitude baixa:
+            Bom — verde.
+          </li>
+
+          <li>
+            Amplitude intermediária:
+            Moderado — amarelo.
+          </li>
+
+          <li>
+            Amplitude alta:
+            Ruim — vermelho.
+          </li>
+
+        </ul>
+
+        <p>
+          As faixas dependem da referência de tubo livre
+          (free pipe) calibrada para cada poço.
+        </p>
+
+        <dl>
+
+          <dt>
+            Referência de free pipe nos metadados (mV)
+          </dt>
+
+          <dd id="dlis-cbl-reference-value"></dd>
+
+
+          <dt>
+            Origem da referência
+          </dt>
+
+          <dd id="dlis-cbl-reference-source"></dd>
+
+        </dl>
+
+        <label for="dlis-cbl-reference-input">
+          Referência de free pipe informada pelo usuário (mV)
+        </label>
+
+        <input
+          id="dlis-cbl-reference-input"
+          name="dlis-cbl-reference"
+          type="number"
+          min="0"
+          step="any"
+          disabled
+        >
+
+        <!--
+          JS futuro:
+          referência dos metadados ou configuração manual,
+          sem amplitude ou cortes fixos.
+        -->
+
+      </section>
+
+
+      <!-- VDL -->
+
+      <section
+        class="dlis-legend-group"
+        aria-labelledby="dlis-vdl-legend-title"
+      >
+
+        <h3 id="dlis-vdl-legend-title">
+          VDL — forma de onda em escala de cinza
+        </h3>
+
+        <ul>
+
+          <li>
+            Listras fortes e regulares:
+            tubo livre — Ruim.
+          </li>
+
+          <li>
+            Padrão fraco ou irregular:
+            bom contato hidráulico — Bom.
+          </li>
+
+          <li>
+            Padrão parcialmente irregular:
+            Moderado.
+          </li>
+
+        </ul>
+
+      </section>
+
+
+      <!-- USIT -->
+
+      <section
+        class="dlis-legend-group"
+        aria-labelledby="dlis-usit-legend-title"
+      >
+
+        <h3 id="dlis-usit-legend-title">
+          USIT — impedância acústica por setor e profundidade
+        </h3>
+
+        <table
+          id="dlis-usit-legend-table"
+          class="dlis-table"
+        >
+
+          <caption>
+            Paleta de impedância Z e critérios fornecidos
+            para o projeto
+          </caption>
+
+          <thead>
+            <tr>
+
+              <th scope="col">
+                Faixa (MRayl) ou código
+              </th>
+
+              <th scope="col">
+                Cor
+              </th>
+
+              <th scope="col">
+                Meio / validade
+              </th>
+
+              <th scope="col">
+                Interpretação
+              </th>
+
+            </tr>
+          </thead>
+
+
+          <tbody>
+
+            <tr data-zone="gas">
+
+              <td>
+                0 ≤ Z &lt; 0,3
+              </td>
+
+              <td>
+                Vermelho puro (#FF0000)
+              </td>
+
+              <td>
+                Gás
+              </td>
+
+              <td>
+                Ruim
+              </td>
+
+            </tr>
+
+
+            <tr data-zone="liquid">
+
+              <td>
+                0,3 ≤ Z &lt; 2,6
+              </td>
+
+              <td>
+                Ciano puro (#00FFFF)
+              </td>
+
+              <td>
+                Líquido
+              </td>
+
+              <td>
+                Ruim ou Moderado,
+                conforme extensão
+              </td>
+
+            </tr>
+
+
+            <tr data-zone="cement">
+
+              <td>
+                2,6 ≤ Z &lt; 10
+              </td>
+
+              <td>
+                Gradiente amarelo-claro → preto
+              </td>
+
+              <td>
+                Cimento
+              </td>
+
+              <td>
+                Bom; mais escuro indica melhor aderência
+                no critério fornecido
+              </td>
+
+            </tr>
+
+
+            <tr data-zone="high-impedance">
+
+              <td>
+                Z ≥ 10
+              </td>
+
+              <td>
+                Preto (#000000)
+              </td>
+
+              <td>
+                Impedância elevada
+              </td>
+
+              <td>
+                Limite superior da paleta
+              </td>
+
+            </tr>
+
+
+            <tr data-zone="no-reading">
+
+              <td>
+                Código -2000
+              </td>
+
+              <td>
+                Verde
+              </td>
+
+              <td>
+                Erro / sem leitura
+              </td>
+
+              <td>
+                Não classificar
+              </td>
+
+            </tr>
+
+
+            <tr data-zone="invalid">
+
+              <td>
+                Z &lt; 0, exceto -2000
+              </td>
+
+              <td>
+                Cinza
+              </td>
+
+              <td>
+                Valor inválido
+              </td>
+
+              <td>
+                Não classificar
+              </td>
+
+            </tr>
+
+          </tbody>
+        </table>
+
+
+        <p>
+          O verde de erro na imagem USIT é distinto
+          do verde da classificação Bom.
+        </p>
+
+
+        <!--
+          JS futuro:
+          verificar -2000 e valores inválidos antes
+          de aplicar as faixas de impedância.
+        -->
+
+      </section>
+
+
+      <!-- GR -->
+
+      <section
+        class="dlis-legend-group"
+        aria-labelledby="dlis-gr-legend-title"
+      >
+
+        <h3 id="dlis-gr-legend-title">
+          GR — raios gama (gAPI)
+        </h3>
+
+        <p>
+          Contexto geológico aproximado:
+          próximo de 0, arenito;
+          60–70, folhelho ou rocha argilosa.
+          Não participa da classificação
+          Bom / Moderado / Ruim.
+        </p>
+
+      </section>
+
+
+      <!--
+        Critérios acima reproduzem o briefing;
+        validação e implementação serão etapas futuras.
+      -->
+
+      <!--
+        JS futuro:
+        em divergência CBL/USIT associada a microanular,
+        priorizar USIT válido.
+      -->
+
+    </section>
+
+
+    <!--
+      Área de trabalho:
+      CSS futuro posicionará tracks lado a lado
+      e painel na lateral.
+    -->
+
+    <div
+      id="dlis-workspace"
+      class="dlis-workspace"
+    >
+
+      <section
+        id="dlis-tracks"
+        class="dlis-section"
+        aria-labelledby="dlis-tracks-title"
+      >
+
+        <h2 id="dlis-tracks-title">
+          Curvas de perfilagem
+        </h2>
+
+
+        <div
+          id="dlis-tracks-container"
+          class="dlis-tracks-container"
+        >
+
+
+          <!-- Profundidade -->
+
+          <section
+            id="dlis-track-depth"
+            class="dlis-track"
+            aria-labelledby="dlis-track-depth-title"
+          >
+
+            <h3 id="dlis-track-depth-title">
+              Profundidade
+            </h3>
+
+            <div
+              id="dlis-plot-depth"
+              class="dlis-plot"
+            ></div>
+
+          </section>
+
+
+          <!-- GR -->
+
+          <section
+            id="dlis-track-gr"
+            class="dlis-track"
+            aria-labelledby="dlis-track-gr-title"
+          >
+
+            <h3 id="dlis-track-gr-title">
+              GR
+            </h3>
+
+            <div
+              id="dlis-plot-gr"
+              class="dlis-plot"
+            ></div>
+
+          </section>
+
+
+          <!-- CBL -->
+
+          <section
+            id="dlis-track-cbl"
+            class="dlis-track"
+            aria-labelledby="dlis-track-cbl-title"
+          >
+
+            <h3 id="dlis-track-cbl-title">
+              CBL
+            </h3>
+
+            <div
+              id="dlis-plot-cbl"
+              class="dlis-plot"
+            ></div>
+
+          </section>
+
+
+          <!-- VDL -->
+
+          <section
+            id="dlis-track-vdl"
+            class="dlis-track"
+            aria-labelledby="dlis-track-vdl-title"
+          >
+
+            <h3 id="dlis-track-vdl-title">
+              VDL
+            </h3>
+
+            <div
+              id="dlis-plot-vdl"
+              class="dlis-plot"
+            ></div>
+
+          </section>
+
+
+          <!-- USIT -->
+
+          <section
+            id="dlis-track-usit"
+            class="dlis-track"
+            aria-labelledby="dlis-track-usit-title"
+          >
+
+            <h3 id="dlis-track-usit-title">
+              USIT
+            </h3>
+
+            <div
+              id="dlis-plot-usit"
+              class="dlis-plot"
+            ></div>
+
+          </section>
+
+
+          <!-- Outras curvas -->
+
+          <section
+            id="dlis-track-generic"
+            class="dlis-track"
+            aria-labelledby="dlis-track-generic-title"
+          >
+
+            <h3 id="dlis-track-generic-title">
+              Outras curvas
+            </h3>
+
+            <div
+              id="dlis-plot-generic"
+              class="dlis-plot"
+            ></div>
+
+          </section>
+
+
+        </div>
+
+
+        <!--
+          Plotagem futura:
+          profundidade comum crescente para baixo;
+          unidades vindas do arquivo.
+        -->
+
+        <!--
+          JS futuro:
+          detectar GR/CBL/VDL/USIT por canais,
+          unidades e dimensões;
+          preservar curvas genéricas.
+        -->
+
+        <!--
+          Canais ausentes não devem gerar curvas
+          ou valores fictícios.
+        -->
+
+      </section>
+
+
+      <!--
+        Leitura exata do array bruto
+        e preparação da marcação manual.
+      -->
+
+      <aside
+        id="dlis-point-panel"
+        class="dlis-point-panel"
+        aria-labelledby="dlis-point-title"
+      >
+
+        <h2 id="dlis-point-title">
+          Leitura do ponto
+        </h2>
+
+
+        <dl class="dlis-point-details">
+
+
+          <dt>
+            Profundidade do cursor
+          </dt>
+
+          <dd id="dlis-point-depth"></dd>
+
+
+          <dt>
+            Curva
+          </dt>
+
+          <dd id="dlis-point-curve"></dd>
+
+
+          <dt>
+            Frame
+          </dt>
+
+          <dd id="dlis-point-frame"></dd>
+
+
+          <dt>
+            Valor bruto
+          </dt>
+
+          <dd id="dlis-point-value"></dd>
+
+
+          <dt>
+            Unidade
+          </dt>
+
+          <dd id="dlis-point-unit"></dd>
+
+
+          <dt>
+            Classificação
+          </dt>
+
+          <dd id="dlis-point-classification"></dd>
+
+
+          <dt>
+            Validade da amostra
+          </dt>
+
+          <dd id="dlis-point-validity"></dd>
+
+
+          <dt>
+            Índice da amostra
+          </dt>
+
+          <dd id="dlis-point-sample-index"></dd>
+
+
+          <dt>
+            Índice do componente / setor
+          </dt>
+
+          <dd id="dlis-point-component-index"></dd>
+
+
+          <dt>
+            Tempo VDL (µs)
+          </dt>
+
+          <dd id="dlis-point-time"></dd>
+
+
+          <dt>
+            Azimute USIT (°)
+          </dt>
+
+          <dd id="dlis-point-azimuth"></dd>
+
+
+        </dl>
+
+
+        <label for="dlis-point-classification-input">
+          Marcar classificação
+        </label>
+
+
+        <select
+          id="dlis-point-classification-input"
+          name="dlis-point-classification"
+          disabled
+        >
+
+          <option value="" selected>
+            Selecione
+          </option>
+
+          <option value="good">
+            Bom
+          </option>
+
+          <option value="moderate">
+            Moderado
+          </option>
+
+          <option value="bad">
+            Ruim
+          </option>
+
+        </select>
+
+
+        <button
+          id="dlis-pin-point"
+          class="dlis-button"
+          type="button"
+          disabled
+        >
+          Fixar ponto
+        </button>
+
+
+        <!--
+          JS futuro:
+          hover/click resolve frame,
+          amostra e componente nos arrays,
+          nunca pela cor do pixel.
+        -->
+
+        <!--
+          JS futuro:
+          conservar valor bruto,
+          unidade, validade e classificação
+          ao fixar o ponto.
+        -->
+
+      </aside>
+
+    </div>
+
+
+    <!--
+      Tabela inicialmente vazia;
+      cada linha receberá um botão Remover
+      com nome acessível.
+    -->
+
+    <section
+      id="dlis-pinned-points"
+      class="dlis-section"
+      aria-labelledby="dlis-pinned-title"
+    >
+
+      <h2 id="dlis-pinned-title">
+        Pontos fixados
+      </h2>
+
+
+      <table
+        id="dlis-points-table"
+        class="dlis-table"
+      >
+
+        <caption>
+          Pontos selecionados nas curvas
+        </caption>
+
+        <thead>
+
+          <tr>
+
+            <th scope="col">
+              Profundidade
+            </th>
+
+            <th scope="col">
+              Curva
+            </th>
+
+            <th scope="col">
+              Valor
+            </th>
+
+            <th scope="col">
+              Classificação
+            </th>
+
+            <th scope="col">
+              Remover
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody id="dlis-points-body">
+        </tbody>
+
+      </table>
+
+
+      <!--
+        JS futuro:
+        inserir/remover linhas mantendo
+        a identidade do arquivo,
+        frame e amostra.
+      -->
+
+
+      <section
+        id="dlis-export"
+        class="dlis-export"
+        aria-labelledby="dlis-export-title"
+      >
+
+        <h3 id="dlis-export-title">
+          Exportar pontos
+        </h3>
+
+
+        <button
+          id="dlis-export-csv"
+          class="dlis-button"
+          type="button"
+          disabled
+        >
+          Exportar CSV
+        </button>
+
+
+        <button
+          id="dlis-export-json"
+          class="dlis-button"
+          type="button"
+          disabled
+        >
+          Exportar JSON
+        </button>
+
+      </section>
+
+    </section>
+
+  </main>
+
+
+  <!--
+    BIBLIOTECAS FUTURAS:
+    incorporar parser RP66 V1
+    e biblioteca de plotagem inline
+    para uso offline.
+  -->
+
+  <!--
+    PARSER:
+    ponto de integração de DLISFile.fromBuffer,
+    se compatível,
+    ou parser RP66 V1 equivalente.
+  -->
+
+  <!--
+    LÓGICA:
+    metadados,
+    frames/canais,
+    dimensões,
+    unidades,
+    calibração
+    e detecção de tipos.
+  -->
+
+  <!--
+    LÓGICA:
+    tracks sincronizados,
+    hover bruto,
+    classificação,
+    marcação,
+    fixação
+    e remoção.
+  -->
+
+  <!--
+    LÓGICA:
+    exportação CSV/JSON
+    e persistência localStorage
+    vinculada ao arquivo correspondente.
+  -->
+
+</body>
+</html>

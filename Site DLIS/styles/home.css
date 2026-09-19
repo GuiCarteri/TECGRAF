@@ -1,0 +1,928 @@
+/* =========================================================
+   RESET
+========================================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    min-height: 100vh;
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    background: #f4f7fb;
+    color: #182230;
+}
+
+
+/* =========================================================
+   VARIÁVEIS
+========================================================= */
+
+:root {
+    --background: #f4f7fb;
+
+    --surface: #ffffff;
+    --surface-secondary: #f8fafc;
+
+    --border: #e1e7ef;
+    --border-dark: #d2dae5;
+
+    --text-primary: #172033;
+    --text-secondary: #697689;
+    --text-muted: #94a0af;
+
+    --primary: #0d95c9;
+    --primary-dark: #0876a4;
+    --primary-light: #e9f8fd;
+
+    --blue: #126bf2;
+
+    --success: #1ca36f;
+    --success-light: #e7f7f0;
+
+    --warning: #f0b429;
+    --warning-light: #fff6dd;
+
+    --danger: #df4747;
+    --danger-light: #fdeaea;
+
+    --shadow:
+        0 12px 35px rgba(22, 35, 54, 0.07);
+
+    --radius: 14px;
+}
+
+
+/* =========================================================
+   CABEÇALHO
+========================================================= */
+
+.dlis-header {
+    padding: 28px 34px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #071422 0%,
+            #0c2138 55%,
+            #0c2b43 100%
+        );
+
+    color: white;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dlis-header > h1 {
+    margin-bottom: 24px;
+
+    font-size: 28px;
+    font-weight: 700;
+
+    letter-spacing: -0.8px;
+}
+
+
+/* =========================================================
+   ÁREA DE UPLOAD
+========================================================= */
+
+#dlis-upload {
+    max-width: 100%;
+}
+
+#dlis-upload-title {
+    margin-bottom: 12px;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    color: #dceafb;
+}
+
+.dlis-drop-zone {
+    position: relative;
+
+    min-height: 120px;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 24px;
+
+    border: 1.5px dashed rgba(117, 210, 255, 0.45);
+
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.045);
+
+    transition:
+        border-color 0.2s,
+        background 0.2s,
+        transform 0.2s;
+}
+
+.dlis-drop-zone:hover {
+    border-color: #54c9f4;
+
+    background: rgba(74, 189, 235, 0.08);
+}
+
+.dlis-drop-zone label {
+    cursor: pointer;
+
+    color: #ffffff;
+
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.dlis-file-input {
+    max-width: 270px;
+
+    color: #b9c9d8;
+
+    font-size: 13px;
+}
+
+.dlis-file-input::file-selector-button {
+    margin-right: 10px;
+
+    padding: 9px 14px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: #0ca4db;
+
+    color: white;
+
+    cursor: pointer;
+
+    font-weight: 600;
+}
+
+#dlis-upload-help {
+    color: #8fa4b8;
+
+    font-size: 12px;
+
+    text-align: center;
+}
+
+.dlis-status {
+    margin-top: 10px;
+
+    min-height: 18px;
+
+    color: #64d5ff;
+
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.dlis-main {
+    width: 100%;
+
+    padding: 28px 34px 50px;
+}
+
+
+/* =========================================================
+   SEÇÕES
+========================================================= */
+
+.dlis-section {
+    margin-bottom: 26px;
+}
+
+.dlis-section > h2 {
+    margin-bottom: 18px;
+
+    color: var(--text-primary);
+
+    font-size: 20px;
+    font-weight: 700;
+
+    letter-spacing: -0.4px;
+}
+
+
+/* =========================================================
+   METADADOS
+========================================================= */
+
+#dlis-metadata {
+    padding: 22px 24px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+}
+
+.dlis-metadata-list {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(150px, 1fr));
+
+    gap: 18px;
+}
+
+.dlis-metadata-list dt {
+    margin-bottom: 5px;
+
+    color: var(--text-muted);
+
+    font-size: 11px;
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.8px;
+}
+
+.dlis-metadata-list dd {
+    min-height: 20px;
+
+    color: var(--text-primary);
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   LEGENDA GERAL
+========================================================= */
+
+#dlis-legend {
+    padding: 22px 24px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+}
+
+.dlis-legend-group {
+    padding: 20px 0;
+
+    border-top: 1px solid var(--border);
+}
+
+.dlis-legend-group:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.dlis-legend-group:last-of-type {
+    padding-bottom: 0;
+}
+
+.dlis-legend-group h3 {
+    margin-bottom: 13px;
+
+    color: #26354a;
+
+    font-size: 15px;
+}
+
+.dlis-legend-group p {
+    margin-top: 10px;
+
+    color: var(--text-secondary);
+
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.dlis-legend-group ul {
+    padding-left: 20px;
+
+    color: var(--text-secondary);
+
+    font-size: 13px;
+
+    line-height: 1.8;
+}
+
+
+/* =========================================================
+   CLASSIFICAÇÕES
+========================================================= */
+
+.dlis-quality-legend {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    padding: 0 !important;
+
+    list-style: none;
+}
+
+.dlis-quality-legend li {
+    padding: 8px 13px;
+
+    border-radius: 20px;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.dlis-quality-legend [data-classification="good"] {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.dlis-quality-legend [data-classification="moderate"] {
+    background: var(--warning-light);
+    color: #a47700;
+}
+
+.dlis-quality-legend [data-classification="bad"] {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+
+/* =========================================================
+   INPUT FREE PIPE
+========================================================= */
+
+#dlis-cbl-reference-input {
+    width: 220px;
+
+    margin-top: 10px;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--border-dark);
+
+    border-radius: 8px;
+
+    background: #f7f9fb;
+
+    outline: none;
+}
+
+#dlis-cbl-reference-input:focus {
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px rgba(13, 149, 201, 0.12);
+}
+
+
+/* =========================================================
+   TABELAS
+========================================================= */
+
+.dlis-table {
+    width: 100%;
+
+    border-collapse: separate;
+    border-spacing: 0;
+
+    margin-top: 10px;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+
+    border-radius: 10px;
+
+    font-size: 12px;
+}
+
+.dlis-table caption {
+    padding: 10px 0;
+
+    color: var(--text-muted);
+
+    font-size: 11px;
+
+    text-align: left;
+}
+
+.dlis-table thead {
+    background: #edf3f8;
+}
+
+.dlis-table th {
+    padding: 11px 12px;
+
+    color: #425169;
+
+    font-size: 11px;
+    font-weight: 700;
+
+    text-align: left;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.4px;
+}
+
+.dlis-table td {
+    padding: 11px 12px;
+
+    color: #566477;
+
+    border-top: 1px solid var(--border);
+
+    background: white;
+}
+
+.dlis-table tbody tr:hover td {
+    background: #f9fbfd;
+}
+
+
+/* =========================================================
+   WORKSPACE
+========================================================= */
+
+.dlis-workspace {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        330px;
+
+    gap: 22px;
+
+    align-items: start;
+
+    margin-bottom: 26px;
+}
+
+
+/* =========================================================
+   TRACKS
+========================================================= */
+
+#dlis-tracks {
+    min-width: 0;
+
+    padding: 22px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+}
+
+.dlis-tracks-container {
+    width: 100%;
+
+    display: grid;
+
+    grid-template-columns:
+        90px
+        minmax(140px, 0.8fr)
+        minmax(140px, 0.8fr)
+        minmax(220px, 1.2fr)
+        minmax(240px, 1.4fr)
+        minmax(160px, 1fr);
+
+    overflow-x: auto;
+
+    border: 1px solid var(--border);
+
+    border-radius: 10px;
+
+    background: #fafcfe;
+}
+
+.dlis-track {
+    min-width: 110px;
+
+    border-right: 1px solid var(--border);
+
+    background: white;
+}
+
+.dlis-track:last-child {
+    border-right: none;
+}
+
+.dlis-track h3 {
+    height: 44px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 8px;
+
+    border-bottom: 1px solid var(--border);
+
+    background: #edf3f8;
+
+    color: #39485d;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+}
+
+
+/* =========================================================
+   ÁREA DE PLOT
+========================================================= */
+
+.dlis-plot {
+    position: relative;
+
+    min-height: 600px;
+
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent 49px,
+            rgba(40, 66, 94, 0.07) 50px
+        ),
+        #ffffff;
+}
+
+
+/* =========================================================
+   PAINEL DO PONTO
+========================================================= */
+
+.dlis-point-panel {
+    position: sticky;
+    top: 20px;
+
+    padding: 22px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+}
+
+.dlis-point-panel h2 {
+    margin-bottom: 20px;
+
+    color: var(--text-primary);
+
+    font-size: 18px;
+}
+
+.dlis-point-details {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        auto;
+
+    column-gap: 16px;
+
+    row-gap: 0;
+
+    margin-bottom: 20px;
+}
+
+.dlis-point-details dt,
+.dlis-point-details dd {
+    padding: 9px 0;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.dlis-point-details dt {
+    color: var(--text-secondary);
+
+    font-size: 12px;
+}
+
+.dlis-point-details dd {
+    min-width: 60px;
+
+    color: var(--text-primary);
+
+    font-size: 12px;
+    font-weight: 700;
+
+    text-align: right;
+}
+
+
+/* =========================================================
+   SELECT
+========================================================= */
+
+.dlis-point-panel label {
+    display: block;
+
+    margin-bottom: 7px;
+
+    color: #45536a;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+#dlis-point-classification-input {
+    width: 100%;
+
+    height: 42px;
+
+    padding: 0 12px;
+
+    border: 1px solid var(--border-dark);
+
+    border-radius: 8px;
+
+    background: white;
+
+    color: var(--text-primary);
+
+    outline: none;
+}
+
+#dlis-point-classification-input:focus {
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px rgba(13, 149, 201, 0.12);
+}
+
+
+/* =========================================================
+   BOTÕES
+========================================================= */
+
+.dlis-button {
+    min-height: 42px;
+
+    padding: 0 17px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #0ca4db,
+            #0879c8
+        );
+
+    color: white;
+
+    cursor: pointer;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    transition:
+        transform 0.15s,
+        box-shadow 0.15s,
+        opacity 0.15s;
+}
+
+.dlis-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 8px 18px rgba(8, 121, 200, 0.22);
+}
+
+.dlis-button:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.45;
+
+    background: #9aa7b5;
+}
+
+#dlis-pin-point {
+    width: 100%;
+
+    margin-top: 13px;
+}
+
+
+/* =========================================================
+   PONTOS FIXADOS
+========================================================= */
+
+#dlis-pinned-points {
+    padding: 22px 24px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+}
+
+
+/* =========================================================
+   EXPORTAÇÃO
+========================================================= */
+
+.dlis-export {
+    margin-top: 20px;
+
+    padding-top: 18px;
+
+    border-top: 1px solid var(--border);
+}
+
+.dlis-export h3 {
+    margin-bottom: 12px;
+
+    color: #334257;
+
+    font-size: 14px;
+}
+
+.dlis-export .dlis-button {
+    margin-right: 8px;
+}
+
+
+/* =========================================================
+   USIT
+========================================================= */
+
+#dlis-usit-legend-table tr[data-zone="gas"] td:nth-child(2) {
+    color: #ff0000;
+    font-weight: 700;
+}
+
+#dlis-usit-legend-table tr[data-zone="liquid"] td:nth-child(2) {
+    color: #00b9c6;
+    font-weight: 700;
+}
+
+#dlis-usit-legend-table tr[data-zone="high-impedance"] td:nth-child(2) {
+    color: #000000;
+    font-weight: 700;
+}
+
+#dlis-usit-legend-table tr[data-zone="no-reading"] td:nth-child(2) {
+    color: #1ca36f;
+    font-weight: 700;
+}
+
+#dlis-usit-legend-table tr[data-zone="invalid"] td:nth-child(2) {
+    color: #808080;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #edf1f5;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #bdc8d4;
+
+    border-radius: 8px;
+
+    border: 2px solid #edf1f5;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9caab8;
+}
+
+
+/* =========================================================
+   RESPONSIVO
+========================================================= */
+
+@media (max-width: 1200px) {
+
+    .dlis-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .dlis-point-panel {
+        position: static;
+    }
+
+}
+
+
+@media (max-width: 900px) {
+
+    .dlis-header {
+        padding: 24px 20px;
+    }
+
+    .dlis-main {
+        padding: 22px 20px 40px;
+    }
+
+    .dlis-metadata-list {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .dlis-header > h1 {
+        font-size: 23px;
+    }
+
+    .dlis-main {
+        padding: 18px 12px 30px;
+    }
+
+    #dlis-metadata,
+    #dlis-legend,
+    #dlis-tracks,
+    #dlis-pinned-points {
+        padding: 16px;
+    }
+
+    .dlis-metadata-list {
+        grid-template-columns: 1fr;
+    }
+
+    .dlis-quality-legend {
+        flex-direction: column;
+    }
+
+    .dlis-table {
+        display: block;
+
+        overflow-x: auto;
+    }
+
+    .dlis-export .dlis-button {
+        width: 100%;
+
+        margin:
+            0
+            0
+            8px;
+    }
+
+}
