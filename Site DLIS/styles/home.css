@@ -14,19 +14,9 @@ html {
 
 body {
     min-height: 100vh;
-
-    font-family:
-        Inter,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Helvetica,
-        Arial,
-        sans-serif;
-
-    background: #f4f7fb;
-    color: #182230;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f3f6f9;
+    color: #182433;
 }
 
 
@@ -35,53 +25,53 @@ body {
 ========================================================= */
 
 :root {
-    --background: #f4f7fb;
+    --navy: #071727;
+    --navy-light: #0b2942;
 
-    --surface: #ffffff;
-    --surface-secondary: #f8fafc;
+    --blue: #0b9ed1;
+    --blue-dark: #0875a0;
+    --blue-light: #e9f7fc;
 
-    --border: #e1e7ef;
-    --border-dark: #d2dae5;
+    --white: #ffffff;
 
-    --text-primary: #172033;
-    --text-secondary: #697689;
-    --text-muted: #94a0af;
+    --background: #f3f6f9;
 
-    --primary: #0d95c9;
-    --primary-dark: #0876a4;
-    --primary-light: #e9f8fd;
+    --text: #182433;
+    --text-secondary: #657386;
+    --text-light: #8e9baa;
 
-    --blue: #126bf2;
+    --border: #dde5ec;
+    --border-dark: #cbd5df;
 
-    --success: #1ca36f;
-    --success-light: #e7f7f0;
+    --green: #1b9b68;
+    --green-light: #e3f6ee;
 
-    --warning: #f0b429;
-    --warning-light: #fff6dd;
+    --yellow: #dba621;
+    --yellow-light: #fff5d7;
 
-    --danger: #df4747;
-    --danger-light: #fdeaea;
+    --red: #dd4747;
+    --red-light: #fdeaea;
 
-    --shadow:
-        0 12px 35px rgba(22, 35, 54, 0.07);
+    --shadow: 0 8px 25px rgba(16, 34, 55, 0.08);
 
     --radius: 14px;
 }
 
 
 /* =========================================================
-   CABEÇALHO
+   HEADER
 ========================================================= */
 
 .dlis-header {
-    padding: 28px 34px;
+    width: 100%;
+    padding: 32px 36px;
 
     background:
         linear-gradient(
             135deg,
-            #071422 0%,
-            #0c2138 55%,
-            #0c2b43 100%
+            #06111e 0%,
+            #0a2036 60%,
+            #0b304c 100%
         );
 
     color: white;
@@ -92,7 +82,7 @@ body {
 .dlis-header > h1 {
     margin-bottom: 24px;
 
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 700;
 
     letter-spacing: -0.8px;
@@ -100,26 +90,25 @@ body {
 
 
 /* =========================================================
-   ÁREA DE UPLOAD
+   UPLOAD
 ========================================================= */
 
 #dlis-upload {
-    max-width: 100%;
+    width: 100%;
 }
 
 #dlis-upload-title {
     margin-bottom: 12px;
 
+    color: #d6e6f4;
+
     font-size: 15px;
     font-weight: 600;
-
-    color: #dceafb;
 }
 
 .dlis-drop-zone {
-    position: relative;
-
-    min-height: 120px;
+    width: 100%;
+    min-height: 135px;
 
     display: flex;
     flex-direction: column;
@@ -127,64 +116,64 @@ body {
     justify-content: center;
     align-items: center;
 
-    gap: 10px;
+    gap: 11px;
 
-    padding: 24px;
+    padding: 25px;
 
-    border: 1.5px dashed rgba(117, 210, 255, 0.45);
+    border: 2px dashed rgba(65, 190, 235, 0.48);
 
     border-radius: 14px;
 
-    background: rgba(255, 255, 255, 0.045);
+    background: rgba(255, 255, 255, 0.04);
 
-    transition:
-        border-color 0.2s,
-        background 0.2s,
-        transform 0.2s;
+    transition: 0.2s;
 }
 
 .dlis-drop-zone:hover {
-    border-color: #54c9f4;
+    border-color: #4cd0ff;
 
-    background: rgba(74, 189, 235, 0.08);
+    background: rgba(70, 199, 245, 0.08);
 }
 
 .dlis-drop-zone label {
-    cursor: pointer;
-
-    color: #ffffff;
+    color: white;
 
     font-size: 15px;
     font-weight: 600;
+
+    cursor: pointer;
 }
 
 .dlis-file-input {
-    max-width: 270px;
-
-    color: #b9c9d8;
+    color: #afc1d1;
 
     font-size: 13px;
 }
 
 .dlis-file-input::file-selector-button {
+    padding: 9px 15px;
+
     margin-right: 10px;
 
-    padding: 9px 14px;
-
     border: none;
+
     border-radius: 8px;
 
-    background: #0ca4db;
+    background: var(--blue);
 
     color: white;
 
-    cursor: pointer;
-
     font-weight: 600;
+
+    cursor: pointer;
+}
+
+.dlis-file-input::file-selector-button:hover {
+    background: var(--blue-dark);
 }
 
 #dlis-upload-help {
-    color: #8fa4b8;
+    color: #8299ac;
 
     font-size: 12px;
 
@@ -192,29 +181,29 @@ body {
 }
 
 .dlis-status {
-    margin-top: 10px;
-
     min-height: 18px;
 
-    color: #64d5ff;
+    margin-top: 10px;
+
+    color: #5ad5ff;
 
     font-size: 13px;
 }
 
 
 /* =========================================================
-   MAIN
+   CONTEÚDO PRINCIPAL
 ========================================================= */
 
 .dlis-main {
     width: 100%;
 
-    padding: 28px 34px 50px;
+    padding: 30px 36px 60px;
 }
 
 
 /* =========================================================
-   SEÇÕES
+   TÍTULOS
 ========================================================= */
 
 .dlis-section {
@@ -224,12 +213,10 @@ body {
 .dlis-section > h2 {
     margin-bottom: 18px;
 
-    color: var(--text-primary);
+    color: var(--text);
 
     font-size: 20px;
     font-weight: 700;
-
-    letter-spacing: -0.4px;
 }
 
 
@@ -238,9 +225,9 @@ body {
 ========================================================= */
 
 #dlis-metadata {
-    padding: 22px 24px;
+    padding: 24px;
 
-    background: var(--surface);
+    background: white;
 
     border: 1px solid var(--border);
 
@@ -252,16 +239,15 @@ body {
 .dlis-metadata-list {
     display: grid;
 
-    grid-template-columns:
-        repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
 
-    gap: 18px;
+    gap: 20px;
 }
 
 .dlis-metadata-list dt {
-    margin-bottom: 5px;
+    margin-bottom: 6px;
 
-    color: var(--text-muted);
+    color: var(--text-light);
 
     font-size: 11px;
     font-weight: 700;
@@ -274,7 +260,7 @@ body {
 .dlis-metadata-list dd {
     min-height: 20px;
 
-    color: var(--text-primary);
+    color: var(--text);
 
     font-size: 14px;
     font-weight: 600;
@@ -282,13 +268,13 @@ body {
 
 
 /* =========================================================
-   LEGENDA GERAL
+   LEGENDA
 ========================================================= */
 
 #dlis-legend {
-    padding: 22px 24px;
+    padding: 24px;
 
-    background: var(--surface);
+    background: white;
 
     border: 1px solid var(--border);
 
@@ -304,8 +290,9 @@ body {
 }
 
 .dlis-legend-group:first-of-type {
-    border-top: none;
     padding-top: 0;
+
+    border-top: none;
 }
 
 .dlis-legend-group:last-of-type {
@@ -315,9 +302,10 @@ body {
 .dlis-legend-group h3 {
     margin-bottom: 13px;
 
-    color: #26354a;
+    color: #26374b;
 
     font-size: 15px;
+    font-weight: 700;
 }
 
 .dlis-legend-group p {
@@ -335,13 +323,35 @@ body {
     color: var(--text-secondary);
 
     font-size: 13px;
-
     line-height: 1.8;
+}
+
+.dlis-legend-group dl {
+    margin-top: 14px;
+}
+
+.dlis-legend-group dt {
+    margin-top: 8px;
+
+    color: var(--text-light);
+
+    font-size: 12px;
+}
+
+.dlis-legend-group dd {
+    margin-top: 3px;
+
+    min-height: 18px;
+
+    color: var(--text);
+
+    font-size: 13px;
+    font-weight: 600;
 }
 
 
 /* =========================================================
-   CLASSIFICAÇÕES
+   LEGENDA BOM / MODERADO / RUIM
 ========================================================= */
 
 .dlis-quality-legend {
@@ -357,55 +367,61 @@ body {
 }
 
 .dlis-quality-legend li {
-    padding: 8px 13px;
+    padding: 8px 14px;
 
-    border-radius: 20px;
+    border-radius: 999px;
 
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .dlis-quality-legend [data-classification="good"] {
-    background: var(--success-light);
-    color: var(--success);
+    background: var(--green-light);
+
+    color: var(--green);
 }
 
 .dlis-quality-legend [data-classification="moderate"] {
-    background: var(--warning-light);
-    color: #a47700;
+    background: var(--yellow-light);
+
+    color: #9b7200;
 }
 
 .dlis-quality-legend [data-classification="bad"] {
-    background: var(--danger-light);
-    color: var(--danger);
+    background: var(--red-light);
+
+    color: var(--red);
 }
 
 
 /* =========================================================
-   INPUT FREE PIPE
+   INPUT CBL
 ========================================================= */
 
 #dlis-cbl-reference-input {
     width: 220px;
 
+    height: 40px;
+
     margin-top: 10px;
 
-    padding: 10px 12px;
+    padding: 0 12px;
 
     border: 1px solid var(--border-dark);
 
     border-radius: 8px;
 
-    background: #f7f9fb;
+    background: #f8fafc;
+
+    color: var(--text);
 
     outline: none;
 }
 
 #dlis-cbl-reference-input:focus {
-    border-color: var(--primary);
+    border-color: var(--blue);
 
-    box-shadow:
-        0 0 0 3px rgba(13, 149, 201, 0.12);
+    box-shadow: 0 0 0 3px rgba(11, 158, 209, 0.12);
 }
 
 
@@ -416,16 +432,18 @@ body {
 .dlis-table {
     width: 100%;
 
-    border-collapse: separate;
-    border-spacing: 0;
-
     margin-top: 10px;
 
-    overflow: hidden;
+    border-collapse: separate;
+    border-spacing: 0;
 
     border: 1px solid var(--border);
 
     border-radius: 10px;
+
+    overflow: hidden;
+
+    background: white;
 
     font-size: 12px;
 }
@@ -433,7 +451,7 @@ body {
 .dlis-table caption {
     padding: 10px 0;
 
-    color: var(--text-muted);
+    color: var(--text-light);
 
     font-size: 11px;
 
@@ -441,13 +459,13 @@ body {
 }
 
 .dlis-table thead {
-    background: #edf3f8;
+    background: #edf3f7;
 }
 
 .dlis-table th {
-    padding: 11px 12px;
+    padding: 12px;
 
-    color: #425169;
+    color: #415166;
 
     font-size: 11px;
     font-weight: 700;
@@ -460,9 +478,9 @@ body {
 }
 
 .dlis-table td {
-    padding: 11px 12px;
+    padding: 12px;
 
-    color: #566477;
+    color: #556477;
 
     border-top: 1px solid var(--border);
 
@@ -470,7 +488,7 @@ body {
 }
 
 .dlis-table tbody tr:hover td {
-    background: #f9fbfd;
+    background: #f8fafc;
 }
 
 
@@ -481,20 +499,18 @@ body {
 .dlis-workspace {
     display: grid;
 
-    grid-template-columns:
-        minmax(0, 1fr)
-        330px;
+    grid-template-columns: minmax(0, 1fr) 330px;
 
-    gap: 22px;
+    gap: 24px;
 
     align-items: start;
 
-    margin-bottom: 26px;
+    margin-bottom: 28px;
 }
 
 
 /* =========================================================
-   TRACKS
+   CONTAINER DOS TRACKS
 ========================================================= */
 
 #dlis-tracks {
@@ -502,7 +518,7 @@ body {
 
     padding: 22px;
 
-    background: var(--surface);
+    background: white;
 
     border: 1px solid var(--border);
 
@@ -518,11 +534,11 @@ body {
 
     grid-template-columns:
         90px
-        minmax(140px, 0.8fr)
-        minmax(140px, 0.8fr)
-        minmax(220px, 1.2fr)
-        minmax(240px, 1.4fr)
-        minmax(160px, 1fr);
+        160px
+        160px
+        230px
+        260px
+        180px;
 
     overflow-x: auto;
 
@@ -530,11 +546,16 @@ body {
 
     border-radius: 10px;
 
-    background: #fafcfe;
+    background: white;
 }
 
+
+/* =========================================================
+   TRACKS
+========================================================= */
+
 .dlis-track {
-    min-width: 110px;
+    min-width: 0;
 
     border-right: 1px solid var(--border);
 
@@ -546,7 +567,7 @@ body {
 }
 
 .dlis-track h3 {
-    height: 44px;
+    height: 45px;
 
     display: flex;
 
@@ -557,9 +578,9 @@ body {
 
     border-bottom: 1px solid var(--border);
 
-    background: #edf3f8;
+    background: #edf3f7;
 
-    color: #39485d;
+    color: #3f5065;
 
     font-size: 12px;
     font-weight: 700;
@@ -571,36 +592,108 @@ body {
 
 
 /* =========================================================
-   ÁREA DE PLOT
+   ÁREA DOS GRÁFICOS
 ========================================================= */
 
 .dlis-plot {
     position: relative;
 
-    min-height: 600px;
+    min-height: 650px;
 
     background:
         repeating-linear-gradient(
             to bottom,
             transparent 0,
             transparent 49px,
-            rgba(40, 66, 94, 0.07) 50px
+            rgba(50, 75, 100, 0.07) 50px
         ),
-        #ffffff;
+        linear-gradient(
+            to right,
+            transparent 0,
+            transparent 49px,
+            rgba(50, 75, 100, 0.04) 50px
+        ),
+        white;
 }
 
 
 /* =========================================================
-   PAINEL DO PONTO
+   TRACK PROFUNDIDADE
+========================================================= */
+
+#dlis-track-depth {
+    background: #f7f9fb;
+}
+
+#dlis-plot-depth {
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent 49px,
+            rgba(50, 75, 100, 0.10) 50px
+        ),
+        #f8fafc;
+}
+
+
+/* =========================================================
+   TRACK GR
+========================================================= */
+
+#dlis-track-gr h3 {
+    border-top: 3px solid #3e8c43;
+}
+
+
+/* =========================================================
+   TRACK CBL
+========================================================= */
+
+#dlis-track-cbl h3 {
+    border-top: 3px solid #d94b4b;
+}
+
+
+/* =========================================================
+   TRACK VDL
+========================================================= */
+
+#dlis-track-vdl h3 {
+    border-top: 3px solid #777777;
+}
+
+
+/* =========================================================
+   TRACK USIT
+========================================================= */
+
+#dlis-track-usit h3 {
+    border-top: 3px solid #13a9cb;
+}
+
+
+/* =========================================================
+   TRACK GENÉRICO
+========================================================= */
+
+#dlis-track-generic h3 {
+    border-top: 3px solid #7565c7;
+}
+
+
+/* =========================================================
+   PAINEL DE LEITURA
 ========================================================= */
 
 .dlis-point-panel {
     position: sticky;
+
     top: 20px;
 
     padding: 22px;
 
-    background: var(--surface);
+    background: white;
 
     border: 1px solid var(--border);
 
@@ -612,21 +705,23 @@ body {
 .dlis-point-panel h2 {
     margin-bottom: 20px;
 
-    color: var(--text-primary);
+    color: var(--text);
 
     font-size: 18px;
+    font-weight: 700;
 }
+
+
+/* =========================================================
+   DETALHES DO PONTO
+========================================================= */
 
 .dlis-point-details {
     display: grid;
 
-    grid-template-columns:
-        1fr
-        auto;
+    grid-template-columns: 1fr auto;
 
-    column-gap: 16px;
-
-    row-gap: 0;
+    column-gap: 14px;
 
     margin-bottom: 20px;
 }
@@ -645,9 +740,9 @@ body {
 }
 
 .dlis-point-details dd {
-    min-width: 60px;
+    min-width: 55px;
 
-    color: var(--text-primary);
+    color: var(--text);
 
     font-size: 12px;
     font-weight: 700;
@@ -657,7 +752,7 @@ body {
 
 
 /* =========================================================
-   SELECT
+   SELECT CLASSIFICAÇÃO
 ========================================================= */
 
 .dlis-point-panel label {
@@ -665,7 +760,7 @@ body {
 
     margin-bottom: 7px;
 
-    color: #45536a;
+    color: #435368;
 
     font-size: 12px;
     font-weight: 600;
@@ -684,16 +779,15 @@ body {
 
     background: white;
 
-    color: var(--text-primary);
+    color: var(--text);
 
     outline: none;
 }
 
 #dlis-point-classification-input:focus {
-    border-color: var(--primary);
+    border-color: var(--blue);
 
-    box-shadow:
-        0 0 0 3px rgba(13, 149, 201, 0.12);
+    box-shadow: 0 0 0 3px rgba(11, 158, 209, 0.12);
 }
 
 
@@ -704,18 +798,17 @@ body {
 .dlis-button {
     min-height: 42px;
 
-    padding: 0 17px;
+    padding: 0 18px;
 
     border: none;
 
     border-radius: 8px;
 
-    background:
-        linear-gradient(
-            135deg,
-            #0ca4db,
-            #0879c8
-        );
+    background: linear-gradient(
+        135deg,
+        #0aa5da,
+        #0877b7
+    );
 
     color: white;
 
@@ -724,31 +817,29 @@ body {
     font-size: 12px;
     font-weight: 700;
 
-    transition:
-        transform 0.15s,
-        box-shadow 0.15s,
-        opacity 0.15s;
+    transition: 0.2s;
 }
 
 .dlis-button:hover:not(:disabled) {
     transform: translateY(-1px);
 
-    box-shadow:
-        0 8px 18px rgba(8, 121, 200, 0.22);
+    box-shadow: 0 7px 18px rgba(8, 119, 183, 0.23);
 }
 
 .dlis-button:disabled {
+    background: #a8b3be;
+
+    color: #ecf0f3;
+
     cursor: not-allowed;
 
-    opacity: 0.45;
-
-    background: #9aa7b5;
+    opacity: 0.65;
 }
 
 #dlis-pin-point {
     width: 100%;
 
-    margin-top: 13px;
+    margin-top: 14px;
 }
 
 
@@ -757,9 +848,9 @@ body {
 ========================================================= */
 
 #dlis-pinned-points {
-    padding: 22px 24px;
+    padding: 24px;
 
-    background: var(--surface);
+    background: white;
 
     border: 1px solid var(--border);
 
@@ -784,7 +875,7 @@ body {
 .dlis-export h3 {
     margin-bottom: 12px;
 
-    color: #334257;
+    color: #354459;
 
     font-size: 14px;
 }
@@ -795,7 +886,7 @@ body {
 
 
 /* =========================================================
-   USIT
+   USIT LEGEND
 ========================================================= */
 
 #dlis-usit-legend-table tr[data-zone="gas"] td:nth-child(2) {
@@ -804,7 +895,12 @@ body {
 }
 
 #dlis-usit-legend-table tr[data-zone="liquid"] td:nth-child(2) {
-    color: #00b9c6;
+    color: #00bfc9;
+    font-weight: 700;
+}
+
+#dlis-usit-legend-table tr[data-zone="cement"] td:nth-child(2) {
+    color: #c69e00;
     font-weight: 700;
 }
 
@@ -814,12 +910,12 @@ body {
 }
 
 #dlis-usit-legend-table tr[data-zone="no-reading"] td:nth-child(2) {
-    color: #1ca36f;
+    color: #00a651;
     font-weight: 700;
 }
 
 #dlis-usit-legend-table tr[data-zone="invalid"] td:nth-child(2) {
-    color: #808080;
+    color: #777777;
     font-weight: 700;
 }
 
@@ -834,27 +930,27 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: #edf1f5;
+    background: #e9eef3;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #bdc8d4;
+    background: #b8c4cf;
 
-    border-radius: 8px;
+    border: 2px solid #e9eef3;
 
-    border: 2px solid #edf1f5;
+    border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #9caab8;
+    background: #99a9b7;
 }
 
 
 /* =========================================================
-   RESPONSIVO
+   RESPONSIVIDADE
 ========================================================= */
 
-@media (max-width: 1200px) {
+@media (max-width: 1250px) {
 
     .dlis-workspace {
         grid-template-columns: 1fr;
@@ -867,32 +963,35 @@ body {
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 950px) {
 
     .dlis-header {
-        padding: 24px 20px;
+        padding: 25px 20px;
     }
 
     .dlis-main {
-        padding: 22px 20px 40px;
+        padding: 24px 20px 45px;
     }
 
     .dlis-metadata-list {
-        grid-template-columns:
-            repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr);
     }
 
 }
 
 
-@media (max-width: 600px) {
+@media (max-width: 650px) {
+
+    .dlis-header {
+        padding: 22px 15px;
+    }
 
     .dlis-header > h1 {
-        font-size: 23px;
+        font-size: 24px;
     }
 
     .dlis-main {
-        padding: 18px 12px 30px;
+        padding: 18px 12px 35px;
     }
 
     #dlis-metadata,
@@ -919,10 +1018,7 @@ body {
     .dlis-export .dlis-button {
         width: 100%;
 
-        margin:
-            0
-            0
-            8px;
+        margin: 0 0 8px;
     }
 
 }
