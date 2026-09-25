@@ -1,0 +1,23 @@
+import { Shell } from "@/components/strata/shell";
+import { Account } from "@/components/strata/account";
+import { requireChatGPTUser, chatGPTSignInPath } from "@/app/chatgpt-auth";
+export const dynamic = "force-dynamic";
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const p = await searchParams;
+  return (
+    <Shell active="account">
+      <Protected params={p} />
+    </Shell>
+  );
+}
+async function Protected({ params }: { params: Record<string, string> }) {
+  const next =
+    "/account" +
+    (params.file ? "?file=" + encodeURIComponent(params.file) : "");
+  await requireChatGPTUser(next);
+  return <Account {...params} />;
+}
