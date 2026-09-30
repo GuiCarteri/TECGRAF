@@ -1,0 +1,6 @@
+# Server-only environment; copy to .dev.vars for local Workers development.
+SUPABASE_URL= https://hpieqaeabhtngtjtsimh.supabase.co/rest/v1/
+SUPABASE_ANON_KEY=sb_publishable_kSLdPRiInZvikofSYUufcA_E70KveND
+# Optional one-time administrator bootstrap: confirmed Supabase UUIDs, never email addresses.
+# Remove after assigning the initial administrator in D1.
+ADMIN_USER_IDS=

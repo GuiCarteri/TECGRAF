@@ -1,0 +1,15 @@
+{
+  "lib/vendor/dlis-parser/BinaryReader.js": "adb1d8840e313aaa3a4f8e7aa5fbe4ca2cf8fcb9e5c3394a502c78939da7aed1",
+  "lib/vendor/dlis-parser/eflr.js": "752568066fdf2e746b913204e4d46c4dcdfc58c6c7206ee2fe874c4eeccb1f47",
+  "lib/vendor/dlis-parser/parser.js": "63babca61b19a929a4e435056c0d731f22cff7e1a1fa76fb24dcbac000f1b271",
+  "lib/vendor/dlis-parser/constants.js": "5b34bfd0e44ffb1cfc223695fa3417af98758fb257457764171ae6c75b15fc91",
+  "lib/vendor/dlis-parser/CHANGES.md": "1aec510f4a85e3ed2fb8aeaed162e18c7149819d999baf1e23f513dead7e8826",
+  "lib/vendor/dlis-parser/index.js": "a34c4e1dd2da2026180d69dd630285446458e85eec38dca33ddcc2c802eaa7ef",
+  "lib/vendor/dlis-parser/LICENSE": "884ebe623e4ddff2159cccad020c4a203be9970db9b3cea29a881e559f020266",
+  "lib/dlis/plotting.ts": "685a36caef180f6f1ab97aee2dce380b8be1e2936b9cc46c12977fee57730237",
+  "lib/dlis/points.ts": "8b5d07d31315b37c3de2b0c47c82a5547a1673d4c384cd1656f619be0bee0971",
+  "lib/dlis/client.ts": "1c9a651a5106fcb17e7e0e8b36a3f136cb4c23257d63a52e88416538bdb30b59",
+  "lib/dlis/core.js": "1e9ac7fed81f3613f3a58b53550f61520d797ee5fe8d0d3bfffc1cb997456f51",
+  "lib/dlis/export.ts": "d5364a448ca8a9e57983b68415efd1be12499c93a1c414ebd2080f8f27977b38",
+  "workers/dlis.worker.ts": "c0d1519ad51bd45726649961b21ea6adb847791c3fad0c956febd6ac7cb16563"
+}
