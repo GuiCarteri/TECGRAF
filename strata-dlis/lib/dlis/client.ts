@@ -6,9 +6,13 @@ export class DlisClient {
     number,
     { resolve: (d: any) => void; reject: (e: Error) => void }
   >();
-  constructor() {
+  constructor(onProgress?: (phase: string) => void) {
     this.worker = new DlisWorker();
     this.worker.onmessage = ({ data }) => {
+      if (data.progress) {
+        onProgress?.(data.progress);
+        return;
+      }
       const p = this.pending.get(data.id);
       if (!p) return;
       this.pending.delete(data.id);
@@ -35,8 +39,8 @@ export class DlisClient {
     const buffer = await file.arrayBuffer();
     return this.request("parse", { buffer }, [buffer]);
   }
-  decode(logicalFileIndex: number, frameKey: string) {
-    return this.request("decode", { logicalFileIndex, frameKey });
+  decode(logicalFileIndex: number, frameKey: string, channels?: string[]) {
+    return this.request("decode", { logicalFileIndex, frameKey, channels });
   }
   destroy() {
     this.worker.terminate();

@@ -1,11 +1,5 @@
 "use client";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
+/** Native selection keeps hundreds of channels keyboard-accessible without a portal per option. */
 export function Pick({
   value,
   onChange,
@@ -18,20 +12,17 @@ export function Pick({
   label: string;
 }) {
   return (
-    <Select
-      value={value || "__none"}
-      onValueChange={(v) => onChange(v === "__none" ? "" : v)}
+    <select
+      className="pick"
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
     >
-      <SelectTrigger aria-label={label} className="pick">
-        <SelectValue placeholder={label} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value || "__none"} value={o.value || "__none"}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
