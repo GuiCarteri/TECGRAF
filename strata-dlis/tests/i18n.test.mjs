@@ -38,7 +38,7 @@ test("application has no operational legacy auth integration", () => {
       );
     }
 });
-test("parser, technical classification and export implementation preserved byte for byte", () => {
+test("unmodified export implementation and third-party license notices preserved", () => {
   const manifest = JSON.parse(
     readFileSync("tests/technical-integrity.json", "utf8"),
   );
