@@ -1,35 +1,42 @@
-# Validação da entrega independente
+# Validação e limitações
 
-Executada em 30/09/2026, Node.js 24.19 e pnpm 11.25.0. Nenhum serviço de produção foi alterado.
-
-## Resultados executados
+Testes executados em 29–30/10/2026, incluindo a versão de código preservada no GitHub em `f7807b3b10adc55b926175b0587ef19e2f9b3d95`. Linux, Node 24.22.1, pnpm 11.25.0, Python 3.12, dlisio 1.0.4. Motor Python validado com NumPy 2.5.4. Nenhum deploy.
 
 | Verificação | Resultado e alcance |
-| --- | --- |
-| Instalação com lockfile congelado | Passou. Foi utilizado um diretório de cache compartilhado apenas como argumento do comando de instalação neste ambiente; o projeto não exige esse caminho. |
-| TypeScript (`pnpm typecheck`) | Passou. |
-| Build Vinext/Vite/Cloudflare | Passou. Gera cliente e Worker independentes. Avisos de imports dinâmicos ineficazes no Vinext permanecem; não bloquearam o build. |
-| Testes Node | 14 passaram: cores/limites USIT, índices brutos, lacunas, assinatura, metadados, detecção, permissões, CSV, SHA-256, destinos seguros, exportações CSV/JSON/XLSX, quatro dicionários, ausência de autenticação legada e integridade dos módulos técnicos. |
-| SQLite | Passou: unicidade de hash e consulta de análise isolada por usuário. |
-| Migração de identidade offline | Passou com fixtures: pontos e papéis preservados, usuário antigo mantido para auditoria, evidência obrigatória e colisões de histórico recusadas. |
-| Integração Worker/D1/R2 | Passou: cadastro, confirmação, reenvio, recuperação, nova senha, login, cookies, refresh, expiração, logout, CSRF, papéis, isolamento de análises/histórico/exportações e fronteiras de upload. Provedor simulado somente no processo de teste; 39 chamadas de autenticação nesse cenário. |
-| Provedor ausente | Passou: erro 503 com `AUTH_NOT_CONFIGURED`, sem identidade fictícia ou fallback de autenticação. |
-| Renderização HTTP/SSR | Passou: português, inglês, chinês e espanhol já no HTML inicial e no atributo `lang`; login público e redirecionamento protegido preservando destino. Não substitui um teste de hidratação em navegador. |
-| Código técnico preservado | Comparação SHA-256 passou para parser, Worker, cliente DLIS, curvas, pontos e exportações. |
-| Lint | **Não passou.** O ZIP original tinha 134 erros e 22 avisos. A versão entregue tem dívida herdada, principalmente `any` nos dados heterogêneos do parser, `setState` em efeitos e links HTML. **Contagem final: 118 erros e 19 avisos.** As regras não foram desabilitadas. |
+|---|---|
+| Instalação congelada, TypeScript e build | Passaram. Avisos upstream Vinext de import dinâmico ineficaz/tamanho de chunks permanecem. |
+| Node | 21 testes passaram: primitivas RP66, bounds, criptografia/truncamento, decode seletivo, índice de profundidade, unidades/escalas, arrays brutos, lacunas, exportações, quatro idiomas e controles existentes. |
+| Python | 5 testes passaram: leitura real de fixture RP66 codificada, unidades, lacunas, métricas, tempo explícito e classificação provisória. |
+| SQLite/migração | Passaram: unicidade, isolamento por usuário e preservação de identidades/pontos com fixtures. |
+| Integração Worker/D1/R2 | Passou: login/cadastro/OTP/recuperação, refresh/expiração/logout, cookies, CSRF, headers falsos, papéis, acesso cruzado e limites multipart. Provider simulado apenas no teste (39 requests). |
+| SSR | Quatro idiomas no HTML inicial; login público e redirecionamento protegido passaram. |
+| Navegador | Estado preservado entre idiomas; quatro canvases com pixels desenhados a partir de DLIS codificado pelo parser real, zoom, waveform, PNG/CSV, privacidade padrão, tablet 1024/768 px. |
+| Arquivos fornecidos | Nove anexos deduplicados por SHA-256 resultaram em cinco arquivos distintos, aproximadamente 17–98 MB. Quatro gráficos abriram em cada um; zoom/fechamento passaram. |
+| Precisão | **124.136.933 valores numéricos suportados coincidiram integralmente com dlisio**, incluindo contagens, unidades, identidades e dimensões. |
+| Lint | **Falhou: 119 erros e 19 avisos.** Base: 118 erros/19 avisos. Principalmente any, efeitos React e links HTML. Regras não foram desativadas. |
+| Audit produção | Zero alertas conhecidos na execução. |
+| Audit geral | **Três alertas**, um alto e dois moderados, descritos abaixo. |
 
-Os testes de exportação efetivamente geram Blob CSV/JSON/XLSX e leem o XLSX novamente. Validam valor bruto, nomes, observação, classificação canônica e ausência de mutação do ponto. Não validam precisão além do limite intrínseco do Excel.
+A comparação independente converte todos os arrays para Float64 little-endian e NaNs canônicos, compara digests SHA-256 e metadados estruturais. Não é amostragem de poucos pontos nem inspeção visual. Conversões físicas são verificadas separadamente em testes unitários. O teste de integridade de código ficou limitado ao exportador/avisos legais realmente inalterados; o parser foi intencionalmente corrigido, e a base já continha expectativa antiga divergente para points.ts.
 
-## Não executado / homologação necessária
+Os resultados agregados em `evidence/numeric-reference.json` registram a rodada numérica inicial; `evidence/browser-real.json` registra a rodada dos cinco arquivos, sem nomes de poços/amostras. Rodadas posteriores confirmaram os mesmos valores. Pico RSS Node variou aproximadamente 201–752 MB, incluindo decode completo e digests; não equivale ao heap do navegador. A interface decodifica canais selecionados e usa cache limitado. Tempos observados de abertura/plot ficaram na ordem de 0,9–2,2 s neste host, sem garantia de SLA ou hardware de campo. Não houve teste contínuo de memória/horas de uso.
 
-- **Supabase real e entrega de e-mail:** dependem das variáveis externas, SMTP, templates com OTP, duração de sessão e domínio. Os testes simulados não comprovam que e-mails reais chegaram, nem a política de limites do projeto do operador.
-- **Navegador, hidratação e layout responsivo:** o download do Chromium falhou por arquivo de distribuição inválido/truncado neste ambiente. O navegador alternativo bloqueou o endereço local (`ERR_BLOCKED_BY_CLIENT`). Portanto, não há alegação de validação visual desktop/celular ou de troca de idioma com pontos carregados efetivamente executada. O cenário `tests/browser.mjs` foi entregue para essa homologação, com respostas sintéticas de Worker. Ele também verifica formulário e observação sem perda de estado; ainda precisa ser executado.
-- **DLIS real representativo:** nenhum DLIS foi anexado à tarefa. Não houve novo teste ponta a ponta de parsing/Worker, publicação multipart completa, aprovação e download de um arquivo real. Use `scripts/validate-dlis.mjs` e os fluxos da aplicação com um arquivo autorizado, em homologação. Preservar os módulos técnicos e passar testes unitários não prova compatibilidade universal.
-- **Migração de dados reais:** não acessada nem executada. O procedimento inclui backup, prova de titularidade, ensaio de importação, validação e rollback.
-- **Implantação real:** não realizada, por instrução do usuário. IDs D1/R2, Supabase, SMTP, domínio e segredos precisam ser configurados em contas próprias.
+Nos dois primeiros casos, metadados opacos criptografados foram ignorados com aviso. Os dados acessíveis coincidiram com dlisio; não houve descriptografia.
 
-## Revisões de segurança incluídas
+## Pendências de dependências
 
-Identidade é obtida pelo Supabase no servidor. Headers de identidade antigos são ignorados, inclusive em teste de falsificação. Administradores novos são inicializados por UUID explícito, sem promoção por e-mail. A API filtra os dados por `owner_id`, verifica papéis e impede sobrescrever uma análise de outro usuário. O upsert também verifica titularidade e hash no banco para reduzir a janela entre consulta e escrita. A administração exige papel no servidor tanto para a página quanto para as operações. A migração não transfere papéis privilegiados automaticamente.
+- Alto: Zod 3.25.76 transitivo do ESLint/react-hooks, GHSA-mrhx-c7xc-m3w5. A dependência direta foi corrigida.
+- Moderado: esbuild 0.18.20 transitivo do drizzle-kit/esm-loader, GHSA-67mh-4wv8-2f99. Não expor servidor de desenvolvimento.
+- Moderado: Satori 0.16.0 via Vinext/@vercel/og, GHSA-wx4j-mvgx-mqwp. Não há rota SVG/OG com entrada de usuário no site; esse caminho não foi homologado e exige atualização antes de uso.
 
-O modo de autenticação anterior, suas rotas, o plugin de infraestrutura e o arquivo de hospedagem exclusivo foram removidos. Avisos legais de terceiros foram preservados. O repositório remoto não foi modificado.
+Não foram forçadas migrações incompatíveis para silenciar a auditoria. DevDependencies podem ser empacotadas no runtime, especialmente via Vinext. Consulte SEGURANCA.md.
+
+## Não verificado ou não implementado integralmente
+
+Supabase/SMTP e entrega real de e-mail, IAM/DNS/TLS, publicação R2 de produção, backups e Codespaces/devcontainer reais dependem de homologação. Não foi modificado Codespace existente. Catálogo por empresa não é isolamento de tenant institucional.
+
+Limiares SWS/CBL e classificação de cimentação permanecem provisórios. Não há certificação universal RP66, eixos físicos inventados, projeção angular calibrada, fatias de tensores, comparação visual lado a lado ou pipeline integral Tkinter/imagem/barreiras. Veja ATUALIZACAO.md e science/README.md.
+
+Navegador testado com Playwright 1.56.1/Chromium headless 141 como alternativa à distribuição indisponível da versão fixada. Firefox/WebKit e leitor de tela não foram testados; chinês depende de fontes locais para todos os glifos. O limite preventivo de 512 MiB não garante suporte a qualquer arquivo/dispositivo.
+
+Comandos exatos no README. A reprodução da comparação real requer arquivos em diretório autorizado, deliberadamente excluídos do ZIP. Evidências visuais são sintéticas e não mostram os arquivos fornecidos.

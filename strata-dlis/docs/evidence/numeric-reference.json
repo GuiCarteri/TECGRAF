@@ -1,0 +1,65 @@
+{
+  "reference": "dlisio 1.0.4",
+  "unique_files": 5,
+  "cases": [
+    {
+      "case": 1,
+      "bytes": 68315516,
+      "frames": 4,
+      "channels": 304,
+      "numeric_values": 29951964,
+      "exact_match": true,
+      "elapsed_ms": 1662,
+      "peak_rss_mb": 452,
+      "warnings": [
+        "Metadados criptografados ignorados; somente registros acess\u00edveis s\u00e3o exibidos."
+      ]
+    },
+    {
+      "case": 2,
+      "bytes": 17025932,
+      "frames": 4,
+      "channels": 304,
+      "numeric_values": 7392324,
+      "exact_match": true,
+      "elapsed_ms": 464,
+      "peak_rss_mb": 201,
+      "warnings": [
+        "Metadados criptografados ignorados; somente registros acess\u00edveis s\u00e3o exibidos."
+      ]
+    },
+    {
+      "case": 3,
+      "bytes": 98426012,
+      "frames": 3,
+      "channels": 310,
+      "numeric_values": 42764682,
+      "exact_match": true,
+      "elapsed_ms": 1727,
+      "peak_rss_mb": 752,
+      "warnings": []
+    },
+    {
+      "case": 4,
+      "bytes": 40792060,
+      "frames": 3,
+      "channels": 238,
+      "numeric_values": 17747261,
+      "exact_match": true,
+      "elapsed_ms": 820,
+      "peak_rss_mb": 365,
+      "warnings": []
+    },
+    {
+      "case": 5,
+      "bytes": 61323104,
+      "frames": 4,
+      "channels": 239,
+      "numeric_values": 26280702,
+      "exact_match": true,
+      "elapsed_ms": 1251,
+      "peak_rss_mb": 546,
+      "warnings": []
+    }
+  ]
+}

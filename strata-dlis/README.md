@@ -7,20 +7,20 @@ Biblioteca pública e análise de arquivos DLIS RP66 V1, com autenticação por 
 - React 19 + TypeScript. As rotas `app/` usam a API do App Router, executada por **Vinext sobre Vite**. Não execute `next build` neste projeto.
 - Cloudflare Workers executa páginas e API. **D1 (`DB`)** mantém usuários, permissões, metadados, análises, pontos, histórico e registros de exportação. **R2 (`BUCKET`)** armazena arquivos publicados.
 - Supabase Auth gerencia senhas, confirmação, recuperação e sessões. Não é necessário migrar os dados da aplicação para um banco Supabase.
-- Arquivos locais são processados no navegador por Web Worker. O parser incluído, os critérios técnicos, as cores e as exportações foram preservados.
+- Arquivos locais são processados no navegador por Web Worker. O parser foi corrigido contra RP66 V1 e comparado com dlisio. Exportações de pontos e paleta foram preservadas; classificações continuam provisórias.
 - Nenhum login por headers, identidade simulada ou infraestrutura de editor é utilizado pela aplicação. O ambiente de testes tem fixtures isoladas, que nunca entram no build de produção.
 
 O processamento do arquivo é client-side; biblioteca, autenticação, publicação e sincronização requerem o backend. Esta aplicação completa não é um site estático nem oferece funcionamento integral offline. **GitHub Pages, isoladamente, não executa Workers, D1, R2 ou as rotas da API.** O GitHub pode armazenar o código; a execução proposta usa contas próprias Cloudflare e Supabase.
 
 ## Instalação local
 
-Requisitos: Node.js **22.18 ou superior** (validado com 24.19), pnpm **11.25.0** e Python 3 para os testes SQLite/migração. Não há requisito de conta em ferramenta de geração de código.
+Requisitos: Node.js **22.18 ou superior** (validado com 24.22.1), pnpm **11.25.0** e Python 3 para os testes SQLite/migração. Não há requisito de conta em ferramenta de geração de código.
 
 ```bash
 corepack enable
 corepack prepare pnpm@11.25.0 --activate
 pnpm install --frozen-lockfile
-cp .dev.vars.example .dev.vars
+cp .env.example .dev.vars
 pnpm db:migrate:local
 pnpm dev
 ```
@@ -36,7 +36,7 @@ O ID D1 zerado em `wrangler.json` serve apenas como placeholder local. `pnpm dep
 | Variável | Finalidade |
 | --- | --- |
 | `SUPABASE_URL` | URL HTTPS do projeto próprio, sem `/auth/v1` no final. |
-| `SUPABASE_ANON_KEY` | Chave pública legada `anon` do projeto, usada pelo adaptador REST no servidor. Não use `service_role`. |
+| `SUPABASE_ANON_KEY` | Chave pública do projeto, enviada no header `apikey`. O nome da variável é histórico. Não use `service_role` ou chave secreta; homologue o tipo de chave com seu Supabase. |
 | `ADMIN_USER_IDS` | Lista opcional de UUIDs Supabase confirmados, separados por vírgulas, para inicializar novos administradores. Nunca e-mails. |
 
 Mesmo a chave pública deve ser configurada no ambiente, não embutida no repositório. Credenciais administrativas Cloudflare/Supabase, tokens de CI e evidências de titularidade não pertencem ao código.
@@ -117,18 +117,39 @@ pnpm test:integration
 node tests/ssr.mjs
 ```
 
-`tests/integration.mjs` executa o Worker compilado com D1/R2 isolados e um provedor simulado apenas no processo de teste. Não substitui a homologação com Supabase e e-mail reais. O teste de integridade compara o SHA-256 dos módulos técnicos com os originais.
+`tests/integration.mjs` executa o Worker compilado com D1/R2 isolados e um provedor simulado apenas no processo de teste. Não substitui a homologação com Supabase e e-mail reais. O teste de integridade cobre exportador e avisos legais inalterados. O parser modificado é verificado por fixtures codificadas e comparação numérica independente.
 
-Teste de navegador (duas janelas de terminal):
+Testes de navegador (cada comando inicia/encerra seu servidor isolado):
 
 ```bash
 pnpm exec playwright install chromium
-pnpm test:browser:serve
-# Em outro terminal:
 pnpm test:browser
+pnpm test:browser:scientific
 ```
 
-O cenário utiliza respostas de Worker sintéticas para verificar a interface, alternância de idioma, pontos, observações e formulários. Não é prova de compatibilidade com um DLIS real. Leia [docs/VALIDACAO.md](docs/VALIDACAO.md) para resultados executados e limitações. O lint ainda aponta dívida técnica herdada; as regras não foram desligadas para produzir um resultado artificialmente verde.
+O primeiro usa respostas sintéticas de Worker para testar idiomas/estado. O segundo usa DLIS RP66 sintético codificado com parser/Worker reais, verifica os quatro gráficos, zoom, waveform, PNG/CSV, privacidade e tablet. APIs de autenticação são simuladas apenas nos testes. Integração/SSR exigem build atual.
+
+Pode-se usar Chromium instalado com `PLAYWRIGHT_EXECUTABLE_PATH=/caminho/para/chrome` e runner externo com `PLAYWRIGHT_MODULE=/caminho/para/playwright`. Os testes desta entrega usaram Playwright 1.56.1/Chromium headless 141 devido à indisponibilidade da distribuição fixada no projeto.
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r science/requirements.txt
+.venv/bin/python -m unittest discover -s science -p test_science.py
+.venv/bin/python scripts/verify-reference.py /caminho/autorizado/para/dlis
+DLIS_TEST_DIR=/caminho/autorizado/para/dlis pnpm test:browser:real
+```
+
+No Windows use `.venv\Scripts\python.exe` e configure a variável no PowerShell. Arquivos de poços não acompanham o projeto. Veja [science/README.md](science/README.md).
+
+## Usar os gráficos
+
+Selecione um DLIS local e confira o resumo/avisos. Escolha LF/frame/canal nos menus ou em **Configurar tracks**. O índice declarado de profundidade tem precedência; canais ambíguos exigem seleção explícita. Ajuste profundidades/zoom, arraste ou use setas/+/- com Canvas focado. **Escala visual** controla CBL/GR/VDL; AGC é relativo, opcional e inicialmente desligado.
+
+Inspecione/fixe pontos; VDL exibe a waveform original. Matrizes usam índice de componente, sem inferir tempo/azimute pela dimensão. Associações explícitas permitem ler coordenadas no painel. Exporte PNG do intervalo ou CSV/XLSX/JSON dos pontos. Os arrays originais não mudam; lacunas não são preenchidas silenciosamente.
+
+Histórico/sincronização de arquivos locais começa desligado. Ativá-lo transmite metadados à API; **Salvar análise** transmite os pontos. **Publicar** é upload separado com autorização/revisão. Abrir localmente não publica os bytes. Cancelar/fechar encerra o Worker; pontos não salvos exigem confirmação de descarte.
+
+Consulte [validação](docs/VALIDACAO.md), [segurança](docs/SEGURANCA.md) e [antes/depois](docs/COMPARACAO_VISUAL.md). O lint permanece com falhas; suas regras não foram desligadas.
 
 ## Fontes oficiais consultadas
 
