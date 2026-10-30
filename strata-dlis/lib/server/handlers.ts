@@ -420,7 +420,7 @@ export async function handle(request: Request, path: string[]) {
     }
     throw new HttpError("Recurso não encontrado.", 404);
   } catch (e: any) {
-    if (!(e instanceof HttpError)) console.error("[STRATA API]", e);
+    if (!(e instanceof HttpError)) console.error("[STRATA API] unexpected server error");
     return json(
       {
         error:

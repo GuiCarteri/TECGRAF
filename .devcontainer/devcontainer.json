@@ -1,0 +1,29 @@
+{
+  "name": "STRATA \u2014 Node 24 / Python",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "node",
+  "forwardPorts": [
+    5173
+  ],
+  "portsAttributes": {
+    "5173": {
+      "label": "STRATA local",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "pnpm --dir strata-dlis install --frozen-lockfile",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-python.python"
+      ],
+      "settings": {
+        "typescript.tsdk": "strata-dlis/node_modules/typescript/lib"
+      }
+    }
+  }
+}
