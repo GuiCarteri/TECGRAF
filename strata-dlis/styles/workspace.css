@@ -477,3 +477,13 @@ h1 {
     row-gap: 10px;
   }
 }
+
+.track-plot { position: relative; }
+.annotation-overlay { position:absolute; top:0; left:0; width:100%; height:620px; touch-action:none; overflow:hidden; z-index:1; cursor:crosshair; }
+.annotation-box { position:absolute; box-sizing:border-box; border:2px dashed #7044ad; pointer-events:none; }
+.annotation-box span { background:#7044ad; color:white; font-size:10px; padding:2px; }
+.annotation-editor { display:grid; gap:6px; padding:8px; background:#f3f7fa; font-size:11px; }
+.annotation-editor label { display:grid; gap:3px; }
+.annotation-editor input,.annotation-editor select { width:100%; min-width:0; padding:5px; border:1px solid #9baeb8; border-radius:4px; background:white; color:#173646; }
+.annotation-editor p { margin:4px 0; }
+.annotation-item { padding-top:7px; border-top:1px solid #aebec8; display:grid; gap:4px; overflow-wrap:anywhere; }

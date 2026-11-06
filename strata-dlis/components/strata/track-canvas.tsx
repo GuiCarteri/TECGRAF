@@ -1,5 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
+import { RegionEditor } from "./regions";
+import type { Region } from "@/lib/dlis/regions";
 import { useRef, useEffect } from "react";
 import { drawTrack, locate, type Track } from "@/lib/dlis/plotting";
 export function TrackCanvas({
@@ -12,6 +14,9 @@ export function TrackCanvas({
   onZoom,
   onPan,
   hoverDepth,
+  fileHash,
+  regions = [],
+  onRegions,
 }: {
   track: Track;
   from: number;
@@ -22,6 +27,9 @@ export function TrackCanvas({
   onZoom: (factor: number, ratio: number) => void;
   onPan: (delta: number) => void;
   hoverDepth: number | null;
+  fileHash?: string;
+  regions?: Region[];
+  onRegions?: (r: Region[]) => void;
 }) {
   const { translate } = useI18n();
   const ref = useRef<HTMLCanvasElement>(null),
@@ -134,6 +142,17 @@ export function TrackCanvas({
           onZoom(e.deltaY > 0 ? 1.2 : 0.8, (e.clientY - r.top) / r.height);
         }}
       />
+      {fileHash && onRegions && (
+        <RegionEditor
+          key={fileHash + track.id + track.depthName}
+          track={track}
+          hash={fileHash}
+          from={from}
+          to={to}
+          regions={regions}
+          onChange={onRegions}
+        />
+      )}
       {!visible && (
         <div className="no-data-interval">
           {translate("Sem dados neste intervalo")}

@@ -1,4 +1,4 @@
-# STRATA — entrega completa, 30/10/2026
+# STRATA — entrega completa, 06/11/2026
 
 Projeto original preservado em `strata-dlis/`. Base: `revert-2-TESTE`, commit `5b379a38575b6d99bb74969d003dd2bf61347ff6`. Branch: `improvement/strata-scientific-viewer-20261029`.
 
@@ -25,3 +25,5 @@ Acesse o endereço mostrado pelo Vite. No Codespaces, mantenha a porta 5173 priv
 - [Motor Python opcional](strata-dlis/science/README.md)
 
 O ZIP contém todo o código versionado e a estrutura original; exclui dependências instaladas, caches, builds, banco, DLIS reais e segredos. Instale dependências pelo lockfile. Não houve deploy. Revise e homologue os serviços reais antes de substituir a versão anterior.
+
+Atualização de cores e marcações: [guia e limitações](strata-dlis/docs/MARCACOES.md).

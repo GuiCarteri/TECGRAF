@@ -1,5 +1,7 @@
 # STRATA DLIS
 
+Atualização de 06/11/2026: [cores e marcações por região](docs/MARCACOES.md). Inclui instruções de uso, testes e limitações desta revisão.
+
 Biblioteca pública e análise de arquivos DLIS RP66 V1, com autenticação por e-mail/senha e interface em português, inglês, chinês simplificado e espanhol.
 
 ## Arquitetura

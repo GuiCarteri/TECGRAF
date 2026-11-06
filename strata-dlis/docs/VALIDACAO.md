@@ -1,5 +1,7 @@
 # Validação e limitações
 
+**Revisão atual (06/11/2026):** consulte [MARCACOES.md](MARCACOES.md). Os resultados abaixo são da entrega de outubro e não equivalem à homologação da interface atual.
+
 Testes executados em 29–30/10/2026, incluindo a versão de código preservada no GitHub em `f7807b3b10adc55b926175b0587ef19e2f9b3d95`. Linux, Node 24.22.1, pnpm 11.25.0, Python 3.12, dlisio 1.0.4. Motor Python validado com NumPy 2.5.4. Nenhum deploy.
 
 | Verificação | Resultado e alcance |

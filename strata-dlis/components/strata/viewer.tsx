@@ -57,6 +57,7 @@ import { makeTrack, type Track } from "@/lib/dlis/plotting";
 import { pointFromTrack } from "@/lib/dlis/points";
 import { exportPoints } from "@/lib/dlis/export";
 import { Pick } from "./controls";
+import { validateRegions, type Region } from "@/lib/dlis/regions";
 import { TrackCanvas } from "./track-canvas";
 import { TrackTools } from "./track-tools";
 import { Waveform } from "./waveform";
@@ -104,6 +105,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     [progress, setProgress] = useState(""),
     [syncEnabled, setSyncEnabled] = useState(false),
     [closeRequested, setCloseRequested] = useState(false);
+  const [regions, setRegions] = useState<Region[]>([]);
   const parser = useRef<DlisClient | null>(null),
     cache = useRef(new Map<string, Promise<any>>()),
     generation = useRef(0),
@@ -285,6 +287,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     setChoices({});
     setPoint(null);
     setPoints([]);
+    setRegions([]);
     setAnalyses([]);
     setAnalysisId("");
     setSavedAt("");
@@ -445,6 +448,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     setFile(null);
     setPoint(null);
     setPoints([]);
+    setRegions([]);
     setBusy("");
     setProgress("");
     setDecoding({});
@@ -464,7 +468,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         fileName: file?.name,
         name: analysisName,
         points,
-        settings: { calibration, choices, from, to, agc },
+        settings: { calibration, choices, from, to, agc, regions },
       });
       setAnalysisId(d.id);
       setDirty(false);
@@ -483,6 +487,12 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     if (!a) return;
     if (dirty) {
       toast.error(translate("Salve a análise atual antes de recuperar outra."));
+      return;
+    }
+    try {
+      setRegions(validateRegions(a.settings?.regions || [], meta.hash));
+    } catch {
+      toast.error("Marcações inválidas / Invalid annotations");
       return;
     }
     setPoints(a.points);
@@ -851,6 +861,14 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                               from={from}
                               to={to}
                               agc={agc}
+                              fileHash={meta.hash}
+                              regions={regions}
+                              onRegions={(r) => {
+                                if (currentMeta.current?.hash !== meta.hash)
+                                  return;
+                                setRegions(r);
+                                setDirty(true);
+                              }}
                               hoverDepth={point?.depth ?? null}
                               onHover={(s, c) => choosePoint(t, s, c)}
                               onPin={(s, c) => choosePoint(t, s, c, true)}
@@ -1164,6 +1182,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                 disabled={dirty}
                 onClick={() => {
                   setPoints([]);
+                  setRegions([]);
                   setAnalysisId("");
                   setAnalysisName("Nova análise");
                   setSavedAt("");

@@ -490,5 +490,22 @@
   "Forma de onda original": "Original waveform",
   "Índice da amostra": "Sample index",
   "Visão geral por amostras próximas; amplie para inspecionar detalhes.": "Nearest-sample overview; zoom in to inspect details.",
-  "Descartar e fechar": "Discard and close"
+  "Descartar e fechar": "Discard and close",
+  "Marcar região": "Mark region",
+  "Ferramenta": "Tool",
+  "Navegar": "Navigate",
+  "Marcar intervalo": "Mark interval",
+  "Classe manual": "Manual label",
+  "Limites da marcação": "Annotation bounds",
+  "De (m)": "From (m)",
+  "Até (m)": "To (m)",
+  "Primeiro componente": "First component",
+  "Último componente": "Last component",
+  "Adicionar marcação": "Add annotation",
+  "Desfazer": "Undo",
+  "Exportar marcações JSON": "Export annotations JSON",
+  "Importar marcações JSON": "Import annotations JSON",
+  "Arquivo incompatível": "Incompatible file",
+  "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.": "Manual annotations. Save the analysis or export JSON to preserve them.",
+  "Remover": "Remove"
 }

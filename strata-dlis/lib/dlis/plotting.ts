@@ -8,6 +8,7 @@ import {
   validity,
   agcRow,
   isMRayl,
+  PALETTE,
 } from "./core.js";
 export type Track = {
   id: string;
@@ -82,7 +83,7 @@ export function makeTrack(
     depth,
     index: depthIndex(depth),
     stride,
-    range,
+    range: kind === "USIT" ? [0, 10] : range,
     rawRange,
   };
 }
@@ -126,7 +127,7 @@ export function drawTrack(
   const ctx = canvas.getContext("2d")!;
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = track.stride > 1 ? PALETTE.invalid : "#fff";
   ctx.fillRect(0, 0, width, height);
   const span = to - from;
   if (!(span > 0)) return;
@@ -159,7 +160,7 @@ export function drawTrack(
           : 0;
       for (let c = 0; c < track.stride; c++) {
         const v = data[s * track.stride + c];
-        let color = "#edf0f2";
+        let color = PALETTE.invalid;
         if (track.kind === "USIT")
           color =
             validity(v) === "Válido" || v === -2000 ? usit(v).color : "#808080";
@@ -222,6 +223,7 @@ export function drawTrack(
     }
     ctx.stroke();
   }
+  if (track.stride > 1) return; // Never tint the prescribed heatmap colors with a grid.
   ctx.strokeStyle = "#6d8a9620";
   for (let i = 0; i <= 10; i++) {
     ctx.beginPath();

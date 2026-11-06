@@ -490,5 +490,22 @@
   "Forma de onda original": "Forma de onda original",
   "Índice da amostra": "Índice da amostra",
   "Visão geral por amostras próximas; amplie para inspecionar detalhes.": "Visão geral por amostras próximas; amplie para inspecionar detalhes.",
-  "Descartar e fechar": "Descartar e fechar"
+  "Descartar e fechar": "Descartar e fechar",
+  "Marcar região": "Marcar região",
+  "Ferramenta": "Ferramenta",
+  "Navegar": "Navegar",
+  "Marcar intervalo": "Marcar intervalo",
+  "Classe manual": "Classe manual",
+  "Limites da marcação": "Limites da marcação",
+  "De (m)": "De (m)",
+  "Até (m)": "Até (m)",
+  "Primeiro componente": "Primeiro componente",
+  "Último componente": "Último componente",
+  "Adicionar marcação": "Adicionar marcação",
+  "Desfazer": "Desfazer",
+  "Exportar marcações JSON": "Exportar marcações JSON",
+  "Importar marcações JSON": "Importar marcações JSON",
+  "Arquivo incompatível": "Arquivo incompatível",
+  "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.": "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.",
+  "Remover": "Remover"
 }

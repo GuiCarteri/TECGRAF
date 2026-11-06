@@ -490,5 +490,22 @@
   "Forma de onda original": "原始波形",
   "Índice da amostra": "样本索引",
   "Visão geral por amostras próximas; amplie para inspecionar detalhes.": "最近样本概览；放大以查看细节。",
-  "Descartar e fechar": "放弃并关闭"
+  "Descartar e fechar": "放弃并关闭",
+  "Marcar região": "标注区域",
+  "Ferramenta": "工具",
+  "Navegar": "浏览",
+  "Marcar intervalo": "标注区间",
+  "Classe manual": "手动标签",
+  "Limites da marcação": "标注边界",
+  "De (m)": "起（米）",
+  "Até (m)": "至（米）",
+  "Primeiro componente": "首个分量",
+  "Último componente": "末个分量",
+  "Adicionar marcação": "添加标注",
+  "Desfazer": "撤销",
+  "Exportar marcações JSON": "导出标注 JSON",
+  "Importar marcações JSON": "导入标注 JSON",
+  "Arquivo incompatível": "不兼容文件",
+  "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.": "手动标注。保存分析或导出 JSON 以保留标注。",
+  "Remover": "删除"
 }
