@@ -60,6 +60,7 @@ function scanRecords(bytes, warnings) {
 
   let pos    = 80; // skip SUL
   let curLR  = null;
+  let encryptedSegments = 0;
 
   while (pos + 4 <= fileSize) {
     const vrLen  = view.getUint16(pos, false);
@@ -79,8 +80,7 @@ function scanRecords(bytes, warnings) {
       const lrsType = bytes[lrsPos + 3];
 
       if (lrsLen < 4 || lrsPos + lrsLen > vrEnd) {
-        warnings.push(`LRS at 0x${lrsPos.toString(16)}: bad length ${lrsLen}`);
-        break;
+        throw new Error('Comprimento de segmento DLIS inválido.');
       }
 
       const isEFLR  =  !!(lrsAttr & LRS_EFLR);
@@ -88,7 +88,16 @@ function scanRecords(bytes, warnings) {
       // A standalone segment (e.g. attr=0x80) has both bits CLEAR → isFirst=true, isLast=true.
       const isFirst = !(lrsAttr & LRS_PREDECESSOR);
       const isLast  = !(lrsAttr & LRS_SUCCESSOR);
-      if (lrsAttr & 0x10) throw new Error('Arquivo contém registro criptografado não suportado.');
+      if (lrsAttr & 0x10) {
+        // Opaque vendor metadata may coexist with readable standard channels.
+        // Encrypted FILE-HEADER or FDATA cannot be attributed safely: fail closed.
+        if (lrsType === 0) throw new Error('Arquivo contém dados ou cabeçalho criptografados não suportados.');
+        encryptedSegments++;
+        curLR = null;
+        lrsPos += lrsLen;
+        continue;
+      }
+      if (lrsAttr & 0x08) throw new Error('Pacote de criptografia sem indicador de criptografia.');
       const hasTL   =  !!(lrsAttr & LRS_TRAILING);
       const hasCRC  =  !!(lrsAttr & LRS_CHECKSUM);
       const hasPad  =  !!(lrsAttr & LRS_PADDING);
@@ -97,7 +106,11 @@ function scanRecords(bytes, warnings) {
       let bodyEnd   = lrsPos + lrsLen;
 
       // Strip trailers (spec §2.2.2.4): Trailing Length (2B) → Checksum (2B) → Padding
-      if (hasTL && bodyEnd - bodyStart >= 2)  bodyEnd -= 2;
+      if (hasTL) {
+        if (bodyEnd - bodyStart < 2 || view.getUint16(bodyEnd - 2, false) !== lrsLen)
+          throw new Error('Comprimento final de segmento DLIS inválido.');
+        bodyEnd -= 2;
+      }
       if (hasCRC && bodyEnd - bodyStart >= 2) bodyEnd -= 2;
       if (hasPad && bodyEnd > bodyStart) {
         const nPad = bytes[bodyEnd - 1];
@@ -106,21 +119,23 @@ function scanRecords(bytes, warnings) {
       }
 
       const body = bodyEnd > bodyStart
-        ? bytes.slice(bodyStart, bodyEnd)
+        ? bytes.subarray(bodyStart, bodyEnd)
         : new Uint8Array(0);
 
       if (isFirst) {
-        if (curLR) warnings.push('Incomplete logical record discarded');
+        if (curLR) throw new Error('Registro lógico DLIS incompleto.');
         curLR = { isEFLR, lrsType, chunks: [] };
       }
-      if (curLR) curLR.chunks.push(body);
+      if (!curLR || curLR.isEFLR !== isEFLR || curLR.lrsType !== lrsType)
+        throw new Error('Continuação de registro DLIS inconsistente.');
+      curLR.chunks.push(body);
 
       if (isLast && curLR) {
         const totalLen = curLR.chunks.reduce((s, c) => s + c.length, 0);
         if (totalLen > 0) {
-          const assembled = new Uint8Array(totalLen);
+          const assembled = curLR.chunks.length === 1 ? curLR.chunks[0] : new Uint8Array(totalLen);
           let off = 0;
-          for (const c of curLR.chunks) { assembled.set(c, off); off += c.length; }
+          if (curLR.chunks.length > 1) for (const c of curLR.chunks) { assembled.set(c, off); off += c.length; }
 
           if (curLR.isEFLR) {
             if (curLR.lrsType === 0) logicalIndex++;
@@ -146,6 +161,8 @@ function scanRecords(bytes, warnings) {
       lrsPos += lrsLen;
     }
   }
+  if (curLR || pos !== fileSize) throw new Error('Arquivo DLIS truncado.');
+  if (encryptedSegments) warnings.push('Metadados criptografados ignorados; somente registros acessíveis são exibidos.');
   return { eflrRecords, iflrMap };
 }
 
@@ -193,7 +210,7 @@ function processChannels(eflr, channels) {
     const rc_raw   = getAttr(obj, 'REPRESENTATION-CODE');
     const dimRaw   = getAttr(obj, 'DIMENSION');
     const dim      = dimRaw
-      ? (Array.isArray(dimRaw) ? dimRaw.map(Number) : [Number(dimRaw)])
+      ? (Array.isArray(dimRaw) ? dimRaw.map(Number).reverse() : [Number(dimRaw)])
       : null;
     // Preserve existing repcode/dimension if this EFLR doesn't carry them
     // (Baker Hughes writes both a standard CHANNEL EFLR and a vendor 440-CHANNEL EFLR;
@@ -290,7 +307,7 @@ const WAVEFORM_RE = /WAVE|WVFM|VDL|WVFT|WVLT|WVFR|DTCO|WF/i;
  * @param {Array}         iflrBlocks  – [ { data: Uint8Array, bodyOffset: number } ]
  * @returns {DecodeResult|null}
  */
-function decodeFrame(frameMeta, channels, iflrBlocks) {
+function decodeFrame(frameMeta, channels, iflrBlocks, selectedNames) {
   if (!iflrBlocks || iflrBlocks.length === 0) return null;
 
   // ── Resolve channel list ─────────────────────────────────────
@@ -299,7 +316,7 @@ function decodeFrame(frameMeta, channels, iflrBlocks) {
     const key = obnameKey(ref);
     let ch = channels.get(key);
     if (!ch) throw new Error('Canal referenciado sem metadados exatos: ' + key);
-    if (!ch.dimension.length || ch.dimension.some(n=>!Number.isInteger(n)||n<1) || ![1,2,5,6,7,10,11,12,13,14,15,16,24].includes(ch.repcode)) throw new Error('Dimensão ou representação não suportada: ' + ch.name);
+    if (!ch.dimension.length || ch.dimension.some(n=>!Number.isInteger(n)||n<1) || ![1,2,5,6,7,12,13,14,15,16,17].includes(ch.repcode)) throw new Error('Dimensão ou representação não suportada: ' + ch.name);
     if (chanList.some(c=>c.name===ch.name)) throw new Error('Mnemonic duplicado no mesmo frame: ' + ch.name);
     chanList.push({...ch});
   }
@@ -311,6 +328,10 @@ function decodeFrame(frameMeta, channels, iflrBlocks) {
     const sz = RC_SIZE[ch.repcode] || 4;
     return { ch, n, sz, totalBytes: n * sz };
   });
+  const selected = selectedNames ? new Set(selectedNames) : null;
+  if (selected && [...selected].some(name => !chanList.some(ch => ch.name === name)))
+    throw new Error('Canal solicitado não pertence ao frame.');
+  const outputPlan = plan.filter(p => !selected || selected.has(p.ch.name));
   const bytesPerFrame = plan.reduce((s, p) => s + p.totalBytes, 0);
   if (bytesPerFrame === 0) return null;
 
@@ -327,7 +348,7 @@ function decodeFrame(frameMeta, channels, iflrBlocks) {
 
   // ── Allocate output arrays ────────────────────────────────────
   const buffers = {};
-  for (const { ch, n } of plan) {
+  for (const { ch, n } of outputPlan) {
     buffers[ch.name] = new Float64Array(totalFrames * n);
   }
   let frameNumbers = new Int32Array(totalFrames);
@@ -344,7 +365,7 @@ function decodeFrame(frameMeta, channels, iflrBlocks) {
         const newFN   = new Int32Array(newSize);
         newFN.set(frameNumbers);
         frameNumbers = newFN;
-        for (const { ch, n } of plan) {
+        for (const { ch, n } of outputPlan) {
           const old = buffers[ch.name];
           const neo = new Float64Array(newSize * n);
           neo.set(old);
@@ -355,13 +376,13 @@ function decodeFrame(frameMeta, channels, iflrBlocks) {
       // Read frame number (UVARI)
       if (r.rem < 1) break;
       let frameNo;
-      try { frameNo = r.uvari(); }
-      catch { break; }
+      frameNo = r.uvari();
 
       // Decode all channels in order
       let ok = true;
       for (const { ch, n, sz } of plan) {
         if (r.rem < sz * n) { ok = false; break; }
+        if (selected && !selected.has(ch.name)) { r.skip(sz*n); continue; }
         const arr = buffers[ch.name];
         for (let d = 0; d < n; d++) {
           try {
@@ -382,7 +403,7 @@ function decodeFrame(frameMeta, channels, iflrBlocks) {
   const frameCount = fi;
   const data = {};
   const strides = {};
-  for (const { ch, n } of plan) {
+  for (const { ch, n } of outputPlan) {
     data[ch.name]    = buffers[ch.name].slice(0, frameCount * n);
     strides[ch.name] = n;
   }
@@ -390,7 +411,7 @@ function decodeFrame(frameMeta, channels, iflrBlocks) {
   return {
     frameCount,
     frameNumbers: frameNumbers.slice(0, frameCount),
-    channels: plan.map(p => ({
+    channels: outputPlan.map(p => ({
       name:      p.ch.name,
       longName:  p.ch.longName,
       units:     p.ch.units,
@@ -442,9 +463,9 @@ export class Frame {
    *     strides     : { [channelName]: number }  // 1 for scalar, N for array
    *   }
    */
-  decode() {
+  decode(options = {}) {
     const blocks = this._lf._iflrMap.get(this._meta.key) || [];
-    return decodeFrame(this._meta, this._lf.channels, blocks);
+    return decodeFrame(this._meta, this._lf.channels, blocks, options.channels);
   }
 
   /**
@@ -606,8 +627,7 @@ export class DLISFile {
    * @returns {DLISFile}
    */
   static fromBuffer(buffer) {
-    const ab    = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
-    const bytes = new Uint8Array(ab);
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     const warnings = [];
 
     // 1. Storage Unit Label

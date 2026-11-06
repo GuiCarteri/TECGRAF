@@ -1,3 +1,5 @@
+> Documento histórico. Para esta atualização, consulte [ATUALIZACAO.md](ATUALIZACAO.md).
+
 # Alterações da entrega
 
 37 arquivos modificados, 26 criados e 15 removidos em relação ao ZIP anexado (além deste inventário).

@@ -2,11 +2,20 @@ import { DLISFile } from "../lib/vendor/dlis-parser/index.js";
 import { validateHeader, extractMetadata, sha256 } from "../lib/dlis/core.js";
 let dlis: any = null;
 self.onmessage = async ({ data }) => {
-  const { id, type, buffer, logicalFileIndex, frameKey } = data;
+  const { id, type, buffer, logicalFileIndex, frameKey, channels } = data;
   try {
     if (type === "parse") {
+      dlis = null;
+      (self as any).postMessage({
+        id,
+        progress: "Verificando integridade do arquivo…",
+      });
       validateHeader(buffer);
       const hash = await sha256(buffer);
+      (self as any).postMessage({
+        id,
+        progress: "Lendo estrutura e metadados do DLIS…",
+      });
       dlis = DLISFile.fromBuffer(buffer);
       if (!dlis.logicalFiles.some((lf: any) => lf.frames.size))
         throw new Error(
@@ -24,7 +33,11 @@ self.onmessage = async ({ data }) => {
         throw new Error(
           "Frame contém canais sem metadados completos. Decodificação bloqueada.",
         );
-      const result = frame.decode();
+      (self as any).postMessage({
+        id,
+        progress: "Decodificando canais selecionados…",
+      });
+      const result = frame.decode({ channels });
       if (!result?.frameCount)
         throw new Error(
           "Frame não pôde ser decodificado ou não contém amostras.",
@@ -37,7 +50,7 @@ self.onmessage = async ({ data }) => {
         )
           throw new Error("Channel possui dimensão incompatível.");
       }
-      console.info("[STRATA] Frame validado", frame.key, result.channels);
+
       (self as any).postMessage({ id, result }, [
         ...Object.values(result.data).map((a: any) => a.buffer),
         result.frameNumbers.buffer,

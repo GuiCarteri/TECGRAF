@@ -1,5 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
+import { RegionEditor } from "./regions";
+import type { Region } from "@/lib/dlis/regions";
 import { useRef, useEffect } from "react";
 import { drawTrack, locate, type Track } from "@/lib/dlis/plotting";
 export function TrackCanvas({
@@ -12,6 +14,9 @@ export function TrackCanvas({
   onZoom,
   onPan,
   hoverDepth,
+  fileHash,
+  regions = [],
+  onRegions,
 }: {
   track: Track;
   from: number;
@@ -22,17 +27,35 @@ export function TrackCanvas({
   onZoom: (factor: number, ratio: number) => void;
   onPan: (delta: number) => void;
   hoverDepth: number | null;
+  fileHash?: string;
+  regions?: Region[];
+  onRegions?: (r: Region[]) => void;
 }) {
   const { translate } = useI18n();
   const ref = useRef<HTMLCanvasElement>(null),
-    drag = useRef<any>(null);
+    drag = useRef<{
+      y: number;
+      from: number;
+      to: number;
+      moved: boolean;
+    } | null>(null),
+    hoverFrame = useRef<number>(0);
   useEffect(() => {
-    if (ref.current) drawTrack(ref.current, track, from, to, agc);
-    const obs = new ResizeObserver(() => {
-      if (ref.current) drawTrack(ref.current, track, from, to, agc);
-    });
+    let pending = 0;
+    const render = () => {
+      cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(() => {
+        if (ref.current) drawTrack(ref.current, track, from, to, agc);
+      });
+    };
+    render();
+    const obs = new ResizeObserver(render);
     if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
+    return () => {
+      obs.disconnect();
+      cancelAnimationFrame(pending);
+      cancelAnimationFrame(hoverFrame.current);
+    };
   }, [track, from, to, agc]);
   const hit = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -49,6 +72,31 @@ export function TrackCanvas({
     <div className="track-plot">
       <canvas
         ref={ref}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "+" || e.key === "=") {
+            e.preventDefault();
+            onZoom(0.8, 0.5);
+          }
+          if (e.key === "-") {
+            e.preventDefault();
+            onZoom(1.2, 0.5);
+          }
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            onPan((to - from) * 0.1);
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            onPan(-(to - from) * 0.1);
+          }
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+        }}
+        onLostPointerCapture={() => {
+          drag.current = null;
+        }}
         aria-label={translate("track_accessible", {
           channel: track.channel.name,
         })}
@@ -73,7 +121,11 @@ export function TrackCanvas({
             return;
           }
           const p = hit(e);
-          if (p) onHover(p.sample, p.component);
+          cancelAnimationFrame(hoverFrame.current);
+          if (p)
+            hoverFrame.current = requestAnimationFrame(() =>
+              onHover(p.sample, p.component),
+            );
         }}
         onPointerUp={(e) => {
           if (!drag.current?.moved) {
@@ -81,6 +133,8 @@ export function TrackCanvas({
             if (p) onPin(p.sample, p.component);
           }
           drag.current = null;
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            e.currentTarget.releasePointerCapture(e.pointerId);
         }}
         onWheel={(e) => {
           e.preventDefault();
@@ -88,6 +142,17 @@ export function TrackCanvas({
           onZoom(e.deltaY > 0 ? 1.2 : 0.8, (e.clientY - r.top) / r.height);
         }}
       />
+      {fileHash && onRegions && (
+        <RegionEditor
+          key={fileHash + track.id + track.depthName}
+          track={track}
+          hash={fileHash}
+          from={from}
+          to={to}
+          regions={regions}
+          onChange={onRegions}
+        />
+      )}
       {!visible && (
         <div className="no-data-interval">
           {translate("Sem dados neste intervalo")}

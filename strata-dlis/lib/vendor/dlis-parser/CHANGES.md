@@ -13,3 +13,7 @@ Based on @geoharkat/dlis-parser 1.0.4, MIT license retained.
 - Metadata warnings remain visible. Vendor-specific metadata not recognized by the strict path may prevent plotting.
 
 A full value-by-value comparison against dlisio passed for the documented Volve fixture. This is not certification of the parser or all producers' RP66 extensions.
+
+## 2026-10-30 — scientific viewer correction
+
+Standard OBNAME copy/USHORT and ASCII/UVARI; corrected FSHORT, validated double sizes and ATTREF. Primitive bounds and typed-array windows checked. ABSATR no longer inherits a value. Dimensions use outer-to-inner array shape. Logical segments/trailing lengths validated. Encrypted opaque metadata may be skipped with warning; encrypted FILE-HEADER/FDATA rejected. Selective numeric decoding validates complete frames and never fabricates unsupported values. Exact comparison against dlisio for five distinct supplied files is documented in docs/VALIDACAO.md; not universal RP66 certification.

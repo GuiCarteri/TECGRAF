@@ -133,13 +133,19 @@ export function unitKind(u) {
   const s = (u || "").toLowerCase().replace(/\s/g, "");
   if (["m", "meter", "metre", "meters"].includes(s)) return "m";
   if (["ft", "feet", "foot"].includes(s)) return "ft";
-  if (["mm", "cm", "in", "0.1in"].includes(s)) return s;
+  if (["mm", "cm", "in", "0.1in", "0.1ft"].includes(s)) return s;
   return null;
 }
 export const metersFactor = (u) =>
-  ({ m: 1, ft: 0.3048, mm: 0.001, cm: 0.01, in: 0.0254, "0.1in": 0.00254 })[
-    unitKind(u)
-  ] ?? null;
+  ({
+    m: 1,
+    ft: 0.3048,
+    mm: 0.001,
+    cm: 0.01,
+    in: 0.0254,
+    "0.1in": 0.00254,
+    "0.1ft": 0.03048,
+  })[unitKind(u)] ?? null;
 export const isMRayl = (u) => /^(mrayl|mrayls|mr)$/i.test((u || "").trim());
 // Suggestions need both semantic evidence and compatible dimensions/units.
 export function detectChannel(ch, stride) {
@@ -162,7 +168,7 @@ export function detectChannel(ch, stride) {
   if (
     stride === 1 &&
     /^mv$/i.test(u) &&
-    (/^(CBL|AMP3FT)$/.test(n) || /CEMENT BOND|3.FT.*AMPLITUDE/.test(desc))
+    (/^(CBL|CBLF|AMP3FT)$/.test(n) || /CEMENT BOND|3.FT.*AMPLITUDE/.test(desc))
   )
     return "CBL";
   if (
@@ -258,4 +264,31 @@ export function agcRow(data, start, stride) {
     }
   }
   return n ? Math.sqrt(sum / n) || 1 : 1;
+}
+
+// RP66 V1 §5.7: the first channel is the index for an indexed FRAME.
+// A depth-like auxiliary channel must not override the declared frame index.
+export function defaultDepthChannel(frame) {
+  const first = frame.channels[0];
+  if (
+    /^(BOREHOLE-DEPTH|VERTICAL-DEPTH)$/i.test(frame.indexType || "") &&
+    first?.dimension?.reduce((a, b) => a * b, 1) === 1 &&
+    metersFactor(first.units) !== null
+  )
+    return first.name;
+  const candidates = frame.channels.filter(
+    (c) =>
+      detectChannel(
+        c,
+        c.dimension.reduce((a, b) => a * b, 1),
+      ) === "DEPTH",
+  );
+  return candidates.length === 1 ? candidates[0].name : null;
+}
+export function boundedInterval(from, to, full) {
+  if (![from, to, ...full].every(Number.isFinite) || !(to > from)) return null;
+  const extent = Math.max(full[1] - full[0], 1e-6);
+  const span = Math.min(extent, Math.max(to - from, extent / 1e6));
+  const start = Math.max(full[0], Math.min(from, full[1] - span));
+  return [start, start + span];
 }

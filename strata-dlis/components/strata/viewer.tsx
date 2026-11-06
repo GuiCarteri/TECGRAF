@@ -1,6 +1,6 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Upload,
   FileSearch,
@@ -50,12 +50,17 @@ import {
   isDlisName,
   numericRange,
   metersFactor,
+  defaultDepthChannel,
+  boundedInterval,
 } from "@/lib/dlis/core.js";
 import { makeTrack, type Track } from "@/lib/dlis/plotting";
 import { pointFromTrack } from "@/lib/dlis/points";
 import { exportPoints } from "@/lib/dlis/export";
 import { Pick } from "./controls";
+import { validateRegions, type Region } from "@/lib/dlis/regions";
 import { TrackCanvas } from "./track-canvas";
+import { TrackTools } from "./track-tools";
+import { Waveform } from "./waveform";
 import { PointsTable } from "./points-table";
 const kinds = ["GR", "CBL", "VDL", "USIT"];
 const scalarKinds = ["GR", "CBL"];
@@ -73,7 +78,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     [full, setFull] = useState([0, 1]),
     [point, setPoint] = useState<any>(null),
     [points, setPoints] = useState<any[]>([]),
-    [agc, setAgc] = useState(true),
+    [agc, setAgc] = useState(false),
     [metadataOpen, setMetadataOpen] = useState(false),
     [mappingOpen, setMappingOpen] = useState(false),
     [calibrationOpen, setCalibrationOpen] = useState(false),
@@ -94,11 +99,18 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     [sample, setSample] = useState(0),
     [component, setComponent] = useState(0),
     [pendingFile, setPendingFile] = useState<File | null>(null),
-    [remoteFile, setRemoteFile] = useState<any>(null);
+    [remoteFile, setRemoteFile] = useState<any>(null),
+    [trackErrors, setTrackErrors] = useState<Record<string, string>>({}),
+    [decoding, setDecoding] = useState<Record<string, boolean>>({}),
+    [progress, setProgress] = useState(""),
+    [syncEnabled, setSyncEnabled] = useState(false),
+    [closeRequested, setCloseRequested] = useState(false);
+  const [regions, setRegions] = useState<Region[]>([]);
   const parser = useRef<DlisClient | null>(null),
     cache = useRef(new Map<string, Promise<any>>()),
     generation = useRef(0),
     input = useRef<HTMLInputElement>(null),
+    remoteAbort = useRef<AbortController | null>(null),
     currentMeta = useRef<any>(null),
     selVersions = useRef<Record<string, number>>({});
   useEffect(() => () => parser.current?.destroy(), []);
@@ -115,24 +127,32 @@ export function Viewer({ file: remoteId }: { file?: string }) {
   useEffect(() => {
     if (!remoteId) return;
     let stopped = false;
+    const controller = new AbortController();
+    remoteAbort.current = controller;
     setBusy("Carregando arquivo…");
-    api("files/" + remoteId)
+    api("files/" + remoteId, { signal: controller.signal })
       .then(async (d) => {
         if (stopped) return;
         setRemoteFile(d.file);
         const r = await authenticatedFetch(
           "/api/files/" + remoteId + "/content",
+          { signal: controller.signal },
         );
         if (!r.ok)
           throw new Error(translate("Não foi possível baixar o arquivo."));
         const blob = await r.blob();
-        if (!stopped)
+        if (!stopped && !controller.signal.aborted)
           await loadFile(new File([blob], d.file.original_name), remoteId);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setBusy(""));
+      .catch((e) => {
+        if (!stopped && !controller.signal.aborted) setError(e.message);
+      })
+      .finally(() => {
+        if (!stopped && !controller.signal.aborted) setBusy("");
+      });
     return () => {
       stopped = true;
+      controller.abort();
     };
   }, [remoteId]);
   function options(m = meta) {
@@ -165,6 +185,12 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     const n = (selVersions.current[kind] || 0) + 1;
     selVersions.current[kind] = n;
     setChoices((c) => ({ ...c, [kind]: id }));
+    setDecoding((d) => ({ ...d, [kind]: false }));
+    setTracks((old) => {
+      const next = { ...old };
+      delete next[kind];
+      return next;
+    });
     if (!id) {
       setTracks((t) => {
         const v = { ...t };
@@ -173,23 +199,38 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       });
       return;
     }
+    setTrackErrors((e) => ({ ...e, [kind]: "" }));
     const option = options(m).find((o: any) => o.value === id);
     if (!option) return;
     try {
-      const key = option.lf + "|" + option.frame.key;
-      if (!cache.current.has(key))
-        cache.current.set(
-          key,
-          parser.current!.decode(option.lf, option.frame.key),
+      setDecoding((d) => ({ ...d, [kind]: true }));
+      const depth = depthOverride || defaultDepthChannel(option.frame);
+      const channels = option.frame.channels
+        .filter(
+          (c: any) =>
+            c.name === option.channel.name ||
+            c.name === depth ||
+            c.dimension.reduce((a: number, b: number) => a * b, 1) === 1 ||
+            /^(us|µs|μs|deg|degree|degrees|°)$/i.test(c.units),
+        )
+        .map((c: any) => c.name);
+      const key = option.lf + "|" + option.frame.key + "|" + option.channel.key;
+      if (!cache.current.has(key)) {
+        const task = parser.current!.decode(
+          option.lf,
+          option.frame.key,
+          channels,
         );
+        cache.current.set(key, task);
+        task.catch(() => {
+          if (cache.current.get(key) === task) cache.current.delete(key);
+        });
+        // Bound retained derived frames; currently displayed tracks keep their own arrays.
+        if (cache.current.size > 6)
+          cache.current.delete(cache.current.keys().next().value!);
+      }
       const result = await cache.current.get(key);
       if (selVersions.current[kind] !== n || currentMeta.current !== m) return;
-      const depths = depthNames(option.frame);
-      const detected = depths.filter(
-        (d: any) => detectChannel(d, 1) === "DEPTH",
-      );
-      const depth =
-        depthOverride || (detected.length === 1 ? detected[0].name : null);
       if (!depth)
         throw new Error(
           translate(
@@ -207,12 +248,17 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       );
       setTracks((t) => ({ ...t, [kind]: tr }));
     } catch (e: any) {
+      if (selVersions.current[kind] !== n || currentMeta.current !== m) return;
+      setTrackErrors((errors) => ({ ...errors, [kind]: e.message }));
       setTracks((t) => {
         const v = { ...t };
         delete v[kind];
         return v;
       });
       toast.error(`${kind}: ${message(e.message)}`);
+    } finally {
+      if (selVersions.current[kind] === n && currentMeta.current === m)
+        setDecoding((d) => ({ ...d, [kind]: false }));
     }
   }
   async function loadFile(f: File, fileId?: string) {
@@ -220,17 +266,28 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       setError("Selecione um arquivo com extensão .DLIS.");
       return;
     }
+    if (f.size > 512 * 1024 * 1024) {
+      setError("Arquivo excede o limite de 512 MB.");
+      return;
+    }
     const g = ++generation.current;
+    currentMeta.current = null;
+    setTrackErrors({});
+    setDecoding({});
+    setProgress("");
     setBusy("Lendo estrutura e metadados do DLIS…");
     setError("");
     parser.current?.destroy();
-    parser.current = new DlisClient();
+    parser.current = new DlisClient((phase) => {
+      if (generation.current === g) setProgress(phase);
+    });
     cache.current.clear();
     selVersions.current = {};
     setTracks({});
     setChoices({});
     setPoint(null);
     setPoints([]);
+    setRegions([]);
     setAnalyses([]);
     setAnalysisId("");
     setSavedAt("");
@@ -254,7 +311,9 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         );
         const exact = matches.filter(
           (o: any) =>
-            o.channel.name === k || (k === "USIT" && o.channel.name === "AIBK"),
+            o.channel.name === k ||
+            (k === "GR" && /^GR_/.test(o.channel.name)) ||
+            (k === "USIT" && o.channel.name === "AIBK"),
         );
         const chosen =
           exact.length === 1
@@ -262,8 +321,10 @@ export function Viewer({ file: remoteId }: { file?: string }) {
             : matches.length === 1
               ? matches[0]
               : null;
+        if (g !== generation.current) return;
         if (chosen) await setTrack(k, chosen.value, m);
       }
+      if (g !== generation.current) return;
       const cblRefs = m.logicalFiles.flatMap((lf: any) =>
         lf.parameters.filter(
           (p: any) =>
@@ -289,24 +350,38 @@ export function Viewer({ file: remoteId }: { file?: string }) {
           goodMax: "",
           badMin: "",
         });
-      api("analyses?hash=" + m.hash)
-        .then((d) => setAnalyses(d.analyses))
-        .catch((e) => toast.error(message(e.message)));
-      post("history", { hash: m.hash, fileName: f.name, fileId }).catch((e) =>
-        toast.error(message(e.message)),
-      );
+
+      if (syncEnabled)
+        post("history", { hash: m.hash, fileName: f.name, fileId }).catch((e) =>
+          toast.error(message(e.message)),
+        );
     } catch (e: any) {
       if (g === generation.current) setError(e.message);
     } finally {
       if (g === generation.current) setBusy("");
     }
   }
+  useEffect(() => {
+    if (!syncEnabled || !meta) return;
+    let stopped = false;
+    api("analyses?hash=" + meta.hash)
+      .then((d) => {
+        if (!stopped) setAnalyses(d.analyses);
+      })
+      .catch((e) => {
+        if (!stopped) toast.error(message(e.message));
+      });
+    return () => {
+      stopped = true;
+    };
+  }, [syncEnabled, meta]);
   function requestFile(f?: File) {
     if (!f) return;
     if (dirty) {
       setPendingFile(f);
       return;
     }
+    remoteAbort.current?.abort();
     setRemoteFile(null);
     loadFile(f);
   }
@@ -317,7 +392,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     if (ranges.length) {
       const a = Math.min(...ranges.map((r) => r[0])),
         b = Math.max(...ranges.map((r) => r[1]));
-      setFull([a, b]);
+      setFull([a, b > a ? b : a + 1]);
       setFrom(a);
       setTo(b > a ? b : a + 1);
     }
@@ -345,15 +420,43 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       toast.error(message(e.message));
     }
   }
+  function changeInterval(a: number, b: number) {
+    const interval = boundedInterval(a, b, full);
+    if (interval) {
+      setFrom(interval[0]);
+      setTo(interval[1]);
+    }
+  }
   function zoom(f: number, r = 0.5) {
     const span = (to - from) * f,
       anchor = from + (to - from) * r;
-    setFrom(anchor - span * r);
-    setTo(anchor + span * (1 - r));
+    changeInterval(anchor - span * r, anchor + span * (1 - r));
   }
   function pan(d: number) {
-    setFrom((x) => x + d);
-    setTo((x) => x + d);
+    changeInterval(from + d, to + d);
+  }
+  function closeFile() {
+    remoteAbort.current?.abort();
+    generation.current++;
+    currentMeta.current = null;
+    parser.current?.destroy();
+    parser.current = null;
+    cache.current.clear();
+    selVersions.current = {};
+    setTracks({});
+    setMeta(null);
+    setFile(null);
+    setPoint(null);
+    setPoints([]);
+    setRegions([]);
+    setBusy("");
+    setProgress("");
+    setDecoding({});
+    setDirty(false);
+    setError("");
+    setTrackErrors({});
+    setRemoteFile(null);
+    if (input.current) input.current.value = "";
   }
   async function save() {
     if (!meta) return;
@@ -365,7 +468,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         fileName: file?.name,
         name: analysisName,
         points,
-        settings: { calibration, choices, from, to, agc },
+        settings: { calibration, choices, from, to, agc, regions },
       });
       setAnalysisId(d.id);
       setDirty(false);
@@ -386,6 +489,12 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       toast.error(translate("Salve a análise atual antes de recuperar outra."));
       return;
     }
+    try {
+      setRegions(validateRegions(a.settings?.regions || [], meta.hash));
+    } catch {
+      toast.error("Marcações inválidas / Invalid annotations");
+      return;
+    }
     setPoints(a.points);
     setAnalysisId(a.id);
     setAnalysisName(a.name);
@@ -401,19 +510,20 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         exportFormat,
         meta.hash,
       );
-      await post("exports", {
-        hash: meta.hash,
-        analysisId,
-        format: exportFormat,
-        count: points.length,
-      });
+      if (syncEnabled)
+        await post("exports", {
+          hash: meta.hash,
+          analysisId,
+          format: exportFormat,
+          count: points.length,
+        });
       toast.success(translate("Arquivo exportado."));
     } catch (e: any) {
       toast.error(message(e.message));
     }
   }
   const trackKinds = [...kinds, ...extra],
-    opts = options();
+    opts = useMemo(() => options(), [meta]);
   const volve = meta?.logicalFiles.some(
     (lf: any) =>
       String(lf.origin?.fieldName).toLowerCase() === "volve" &&
@@ -458,6 +568,15 @@ export function Viewer({ file: remoteId }: { file?: string }) {
             <Upload size={16} />
             {translate("Abrir DLIS")}
           </button>
+          {file && (
+            <button
+              className="button"
+              onClick={() => (dirty ? setCloseRequested(true) : closeFile())}
+            >
+              <X size={16} />
+              {translate("Fechar arquivo")}
+            </button>
+          )}
           {meta && (
             <button className="button" onClick={() => setMetadataOpen(true)}>
               <FileSearch size={16} />
@@ -468,7 +587,14 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       </div>
       {busy && (
         <div className="notice" role="status">
-          {message(busy)}
+          <span>
+            {message(busy)} {progress && <small>{message(progress)}</small>}
+          </span>
+          {busy.includes("DLIS") && (
+            <button className="button compact" onClick={closeFile}>
+              {translate("Cancelar leitura")}
+            </button>
+          )}
         </div>
       )}
       {error && (
@@ -518,6 +644,33 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       ) : (
         meta && (
           <>
+            <div className="viewer-summary">
+              <span className="badge valid">
+                {translate("Dados originais")}
+              </span>
+              <span>
+                {meta.logicalFiles.length} {translate("arquivos lógicos")} ·{" "}
+                {opts.length} {translate("canais disponíveis")}
+              </span>
+              <span>{formatBytes(file?.size || 0, locale)}</span>
+              <label className="row">
+                <Switch
+                  checked={syncEnabled}
+                  onCheckedChange={setSyncEnabled}
+                />
+                {translate("Sincronizar histórico na conta")}
+              </label>
+            </div>
+            <p className="privacy-note">
+              {translate(
+                "Salvar análise envia pontos e metadados à sua conta. Publicar envia o arquivo somente após confirmação.",
+              )}
+            </p>
+            <p className="privacy-note">
+              {translate(
+                "Visão geral por amostras próximas; amplie para inspecionar detalhes.",
+              )}
+            </p>
             <div className="viewer-toolbar">
               <div className="row">
                 <label className="inline-field">
@@ -664,7 +817,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                               ? translate("OUTRA CURVA")
                               : k}
                           </strong>
-                          <small>
+                          <small title={t?.channel.longName}>
                             {t
                               ? `${t.channel.name} · ${t.channel.units || translate("unidade não informada")}`
                               : translate("Nenhum canal correspondente")}
@@ -708,29 +861,59 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                               from={from}
                               to={to}
                               agc={agc}
+                              fileHash={meta.hash}
+                              regions={regions}
+                              onRegions={(r) => {
+                                if (currentMeta.current?.hash !== meta.hash)
+                                  return;
+                                setRegions(r);
+                                setDirty(true);
+                              }}
                               hoverDepth={point?.depth ?? null}
                               onHover={(s, c) => choosePoint(t, s, c)}
                               onPin={(s, c) => choosePoint(t, s, c, true)}
                               onZoom={zoom}
                               onPan={pan}
                             />
+                            <TrackTools
+                              key={t.id}
+                              track={t}
+                              from={from}
+                              to={to}
+                              agc={agc}
+                              onRange={(range) =>
+                                setTracks((old) => ({
+                                  ...old,
+                                  [k]: { ...old[k], range },
+                                }))
+                              }
+                            />
                             <div className="track-source">
                               LF {t.lf + 1}
-                              {translate("· Frame")}
-                              {t.frame.name} · {t.result.frameCount}
-                              {translate("amostras")}
+                              {translate("· Frame")} {t.frame.name} ·{" "}
+                              {t.result.frameCount} {translate("amostras")}
                             </div>
                           </>
                         ) : (
                           <div className="track-unavailable">
                             <FileSearch size={24} />
-                            <p>
-                              {choices[k]
-                                ? translate(
-                                    "Canal não pôde ser desenhado. Confira a configuração de profundidade.",
-                                  )
-                                : `${k.startsWith("OTHER") ? translate("Canal") : k} não selecionado.`}
-                            </p>
+                            {decoding[k] ? (
+                              <p role="status">
+                                {translate(
+                                  "Decodificando canais selecionados…",
+                                )}
+                              </p>
+                            ) : (
+                              <p role={trackErrors[k] ? "alert" : undefined}>
+                                {trackErrors[k]
+                                  ? message(trackErrors[k])
+                                  : choices[k]
+                                    ? translate(
+                                        "Canal não pôde ser desenhado. Confira a configuração de profundidade.",
+                                      )
+                                    : `${k.startsWith("OTHER") ? translate("Canal") : k} — ${translate("Nenhum canal selecionado")}`}
+                              </p>
+                            )}
                             <small>
                               {translate("Escolha um canal real do arquivo.")}
                             </small>
@@ -750,12 +933,20 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                       {point.rawValue ?? point.rawRepresentation}
                       <small>{point.unit}</small>
                     </div>
+                    {point.curve === "VDL" &&
+                      tracks.VDL &&
+                      point.channelKey === tracks.VDL.channel.key && (
+                        <Waveform
+                          track={tracks.VDL}
+                          sample={point.sampleIndex}
+                        />
+                      )}
                     <span className="badge">
                       {translate("Valor bruto original")}
                     </span>
                     <dl className="reading-dl">
                       {Object.entries({
-                        Profundidade: point.depth + " m",
+                        Profundidade: Number(point.depth).toFixed(4) + " m",
                         "Prof. original":
                           point.depthRaw + " " + point.depthRawUnit,
                         "Logical file":
@@ -779,21 +970,36 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                         "Classificação automática":
                           point.automaticClassification ||
                           translate("Não classificado"),
-                      }).map(([k, v]) => (
-                        <div key={k}>
-                          <dt>{message(k)}</dt>
-                          <dd>
-                            {[
-                              "Validade",
-                              "Zona USIT",
-                              "Micro-debonding",
-                              "Classificação automática",
-                            ].includes(k)
-                              ? message(String(v))
-                              : String(v)}
-                          </dd>
-                        </div>
-                      ))}
+                      })
+                        .filter(
+                          ([k]) =>
+                            !(
+                              (k === "Tempo VDL" && point.curve !== "VDL") ||
+                              ([
+                                "Azimute",
+                                "Zona USIT",
+                                "Micro-debonding",
+                              ].includes(k) &&
+                                point.curve !== "USIT") ||
+                              (k === "Classificação automática" &&
+                                point.curve !== "CBL")
+                            ),
+                        )
+                        .map(([k, v]) => (
+                          <div key={k}>
+                            <dt>{message(k)}</dt>
+                            <dd>
+                              {[
+                                "Validade",
+                                "Zona USIT",
+                                "Micro-debonding",
+                                "Classificação automática",
+                              ].includes(k)
+                                ? message(String(v))
+                                : String(v)}
+                            </dd>
+                          </div>
+                        ))}
                     </dl>
                     <button
                       className="button primary"
@@ -828,6 +1034,11 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                 )}
                 <div className="usit-legend">
                   <b>USIT · MRayl</b>
+                  <p className="status-label">
+                    {translate(
+                      "Interpretação provisória; requer validação especializada.",
+                    )}
+                  </p>
                   {[
                     ["#FF0000", translate("Gás"), translate("0 ≤ Z < 0,3")],
                     [
@@ -971,6 +1182,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                 disabled={dirty}
                 onClick={() => {
                   setPoints([]);
+                  setRegions([]);
                   setAnalysisId("");
                   setAnalysisName("Nova análise");
                   setSavedAt("");
@@ -1274,6 +1486,31 @@ export function Viewer({ file: remoteId }: { file?: string }) {
           </p>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={closeRequested} onOpenChange={setCloseRequested}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{translate("Fechar arquivo")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {translate(
+                "Há pontos ou alterações não salvos. Salve a análise para recuperá-los depois.",
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {translate("Voltar e salvar")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setCloseRequested(false);
+                closeFile();
+              }}
+            >
+              {translate("Descartar e fechar")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={!!pendingFile}
         onOpenChange={(open) => {
