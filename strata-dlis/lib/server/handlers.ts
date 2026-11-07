@@ -1,3 +1,4 @@
+import { validateRegions } from "../dlis/regions";
 import { hasRefresh } from "./provider";
 import { authHandler } from "./auth-handlers";
 import { query, bucket, database } from "./db";
@@ -46,7 +47,8 @@ export async function handle(request: Request, path: string[]) {
     if (route === "auth") return authHandler(request, id);
     if (route === "me" && request.method === "GET") {
       const user = await currentUser();
-      if (!user && await hasRefresh()) throw new HttpError("AUTH_EXPIRED", 401);
+      if (!user && (await hasRefresh()))
+        throw new HttpError("AUTH_EXPIRED", 401);
       return json({ user });
     }
     if (route === "files" && request.method === "GET" && !id) {
@@ -280,12 +282,22 @@ export async function handle(request: Request, path: string[]) {
           )
             throw new HttpError("Ponto sem referência válida ao array.");
         }
+        if (b.settings?.regions !== undefined) {
+          try {
+            b.settings.regions = validateRegions(b.settings.regions, b.hash);
+          } catch {
+            throw new HttpError("Marcações inválidas / Invalid annotations");
+          }
+        }
         const aid = str(b.id) || uuid();
         const existing = await query(
           "SELECT owner_id,hash FROM analyses WHERE id=?",
           aid,
         ).first<any>();
-        if (existing && (existing.owner_id !== user.id || existing.hash !== b.hash))
+        if (
+          existing &&
+          (existing.owner_id !== user.id || existing.hash !== b.hash)
+        )
           throw new HttpError("Sem permissão.", 403);
         await query(
           "INSERT INTO analyses (id,owner_id,hash,file_name,name,points,settings,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,points=excluded.points,settings=excluded.settings,updated_at=excluded.updated_at WHERE analyses.owner_id=excluded.owner_id AND analyses.hash=excluded.hash",
@@ -382,7 +394,8 @@ export async function handle(request: Request, path: string[]) {
               ).all()
             ).results,
           });
-        if (request.method !== "POST") throw new HttpError("Método não permitido.", 405);
+        if (request.method !== "POST")
+          throw new HttpError("Método não permitido.", 405);
         const b = await body(request);
         if (!["user", "publisher", "admin"].includes(b.role) || b.id === u.id)
           throw new HttpError("Papel inválido ou alteração da própria conta.");
@@ -398,7 +411,8 @@ export async function handle(request: Request, path: string[]) {
               ).all()
             ).results.map(parseFile),
           });
-        if (request.method !== "POST") throw new HttpError("Método não permitido.", 405);
+        if (request.method !== "POST")
+          throw new HttpError("Método não permitido.", 405);
         const b = await body(request);
         if (!["validated", "review", "pending", "archived"].includes(b.status))
           throw new HttpError("Status inválido.");
@@ -420,7 +434,8 @@ export async function handle(request: Request, path: string[]) {
     }
     throw new HttpError("Recurso não encontrado.", 404);
   } catch (e: any) {
-    if (!(e instanceof HttpError)) console.error("[STRATA API]", e);
+    if (!(e instanceof HttpError))
+      console.error("[STRATA API] unexpected server error");
     return json(
       {
         error:

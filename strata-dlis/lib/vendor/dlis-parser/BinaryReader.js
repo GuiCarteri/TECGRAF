@@ -21,7 +21,7 @@ export class BinaryReader {
     this._view  = new DataView(this._ab);
     this._bytes = new Uint8Array(this._ab);
     this._pos   = this._base + start;
-    this._end   = end != null ? this._base + end : this._ab.byteLength;
+    this._end   = end != null ? this._base + end : this._base + (source instanceof Uint8Array ? source.byteLength : this._ab.byteLength);
   }
 
   get pos()  { return this._pos - this._base; }
@@ -30,19 +30,23 @@ export class BinaryReader {
   eof()      { return this._pos >= this._end; }
   peek()     { return this._pos < this._end ? this._bytes[this._pos] : -1; }
 
-  u8()  { return this._bytes[this._pos++]; }
-  u16() { const v = this._view.getUint16(this._pos, false); this._pos += 2; return v; }
-  u32() { const v = this._view.getUint32(this._pos, false); this._pos += 4; return v; }
+  ensure(n) {
+    if (!Number.isInteger(n) || n < 0 || n > this.rem) throw new Error('Registro DLIS truncado.');
+  }
+  u8()  { this.ensure(1); return this._bytes[this._pos++]; }
+  u16() { this.ensure(2); const v = this._view.getUint16(this._pos, false); this._pos += 2; return v; }
+  u32() { this.ensure(4); const v = this._view.getUint32(this._pos, false); this._pos += 4; return v; }
   i8()  { const v = this._view.getInt8(this._pos);          this._pos++;    return v; }
-  i16() { const v = this._view.getInt16(this._pos, false);  this._pos += 2; return v; }
-  i32() { const v = this._view.getInt32(this._pos, false);  this._pos += 4; return v; }
-  f32() { const v = this._view.getFloat32(this._pos, false); this._pos += 4; return v; }
-  f64() { const v = this._view.getFloat64(this._pos, false); this._pos += 8; return v; }
+  i16() { this.ensure(2); const v = this._view.getInt16(this._pos, false);  this._pos += 2; return v; }
+  i32() { this.ensure(4); const v = this._view.getInt32(this._pos, false);  this._pos += 4; return v; }
+  f32() { this.ensure(4); const v = this._view.getFloat32(this._pos, false); this._pos += 4; return v; }
+  f64() { this.ensure(8); const v = this._view.getFloat64(this._pos, false); this._pos += 8; return v; }
 
-  skip(n) { this._pos += n; }
+  skip(n) { this.ensure(n); this._pos += n; }
 
   /** Read n bytes as a Uint8Array (zero-copy slice). */
   slice(n) {
+    this.ensure(n);
     const s = this._bytes.subarray(this._pos, this._pos + n);
     this._pos += n;
     return s;
@@ -50,6 +54,7 @@ export class BinaryReader {
 
   /** Read n bytes as UTF-8 string. */
   text(n) {
+    this.ensure(n);
     const s = new TextDecoder('utf-8', { fatal: false }).decode(
       this._bytes.subarray(this._pos, this._pos + n)
     );
@@ -61,18 +66,14 @@ export class BinaryReader {
 
   /** Code 1 — FSHORT: 16-bit RP66 float (NOT IEEE half-float). */
   fshort() {
-    const raw  = this._view.getUint16(this._pos, false); this._pos += 2;
-    const sign = (raw >> 15) ? -1.0 : 1.0;
-    const exp  = (raw >> 11) & 0x0F;
-    const mant = raw & 0x07FF;
-    return exp === 0
-      ? sign * 0.5 * (mant / 2048.0)
-      : sign * Math.pow(2, exp - 2) * (1.0 + mant / 2048.0);
+    const raw = this.u16();
+    const mantissa = (raw & 0x8000) ? (raw >> 4) - 4096 : raw >> 4;
+    return (mantissa / 2048) * 2 ** (raw & 15);
   }
 
   /** Code 5 — ISINGL: IBM base-16 single precision float. */
   isingl() {
-    const n    = this._view.getUint32(this._pos, false); this._pos += 4;
+    const n = this.u32();
     const sign = (n >>> 31) ? -1.0 : 1.0;
     const exp  = ((n >> 24) & 0x7F) - 64;
     const frac = (n & 0xFFFFFF) / 16777216.0;
@@ -81,6 +82,7 @@ export class BinaryReader {
 
   /** Code 6 — VSINGL: VAX F-float (word-swapped pairs). */
   vsingl() {
+    this.ensure(4);
     const p = this._pos; this._pos += 4;
     const raw = (this._bytes[p+1] << 24) | (this._bytes[p] << 16) |
                 (this._bytes[p+3] << 8)  |  this._bytes[p+2];
@@ -98,12 +100,12 @@ export class BinaryReader {
    * @returns {number}
    */
   uvari() {
-    const b0 = this._bytes[this._pos++];
+    const b0 = this.u8();
     if (!(b0 & 0x80)) return b0;
-    const b1 = this._bytes[this._pos++];
+    const b1 = this.u8();
     if ((b0 & 0xC0) === 0x80) return ((b0 & 0x3F) << 8) | b1;
-    const b2 = this._bytes[this._pos++];
-    const b3 = this._bytes[this._pos++];
+    const b2 = this.u8();
+    const b3 = this.u8();
     return ((b0 & 0x3F) * 16777216) + (b1 << 16) + (b2 << 8) + b3;
   }
 
@@ -112,91 +114,15 @@ export class BinaryReader {
    * @returns {string}
    */
   ident() {
-    const n = this._bytes[this._pos++];
+    const n = this.u8();
     return this.text(n).trim();
   }
 
-  /**
-   * ASCII — 4-byte ULONG length-prefixed string.
-   * Falls back to IDENT (1-byte prefix) when the 4-byte length is unreasonably
-   * large — Baker Hughes Atlas writes IDENT-encoded strings with ASCII repcode.
-   * @returns {string}
-   */
-  asciiStr() {
-    const saved = this._pos;
-    const n = this._view.getUint32(this._pos, false); this._pos += 4;
-    if (n > 65536 || this._pos + n > this._end) {
-      this._pos = saved;
-      return this.ident();
-    }
-    return this.text(n).trimEnd();
-  }
+  /** RP66 V1 B.20: ASCII length is UVARI, not a fixed ULONG. */
+  asciiStr() { return this.text(this.uvari()); }
 
-  /**
-   * OBNAME — object name triplet: { origin, copy, name }.
-   *
-   * Standard encoding: UVARI origin + USHORT (2B BE) copy + IDENT name.
-   * Baker Hughes Atlas variant: UVARI origin + u8 (1B) copy + IDENT name.
-   *
-   * Auto-detects by checking whether the 2-byte-copy interpretation gives a
-   * valid printable-ASCII name (length ≤ 64).  If not, tries 1-byte copy.
-   * Uses only direct byte reads (no DataView) to avoid out-of-bounds throws.
-   *
-   * @returns {{ origin: number, copy: number, name: string }}
-   */
-  obname() {
-    const origin      = this.uvari();
-    const afterOrigin = this._pos;
-    const rem         = this._end - afterOrigin;
-
-    // ── Standard: 2-byte copy ─────────────────────────────────
-    if (rem >= 3) {
-      const copy2 = (this._bytes[afterOrigin] << 8) | this._bytes[afterOrigin + 1];
-      const nlen2 = this._bytes[afterOrigin + 2];
-      if (nlen2 <= 64 && rem >= 3 + nlen2 && this._nameOk(afterOrigin + 3, nlen2)) {
-        this._pos = afterOrigin + 3 + nlen2;
-        return {
-          origin, copy: copy2,
-          name: new TextDecoder('utf-8', { fatal: false })
-            .decode(this._bytes.subarray(afterOrigin + 3, afterOrigin + 3 + nlen2))
-            .trim(),
-        };
-      }
-    }
-
-    // ── Fallback: 1-byte copy (Baker Hughes Atlas) ────────────
-    if (rem >= 2) {
-      const copy1 = this._bytes[afterOrigin];
-      const nlen1 = this._bytes[afterOrigin + 1];
-      if (nlen1 <= 64 && rem >= 2 + nlen1 && this._nameOk(afterOrigin + 2, nlen1)) {
-        this._pos = afterOrigin + 2 + nlen1;
-        return {
-          origin, copy: copy1,
-          name: new TextDecoder('utf-8', { fatal: false })
-            .decode(this._bytes.subarray(afterOrigin + 2, afterOrigin + 2 + nlen1))
-            .trim(),
-        };
-      }
-    }
-
-    // ── Last resort: standard with whatever data remains ──────
-    if (rem >= 2) {
-      const copy2 = (this._bytes[afterOrigin] << 8) | this._bytes[afterOrigin + 1];
-      this._pos   = afterOrigin + 2;
-      return { origin, copy: copy2, name: this.ident() };
-    }
-    return { origin, copy: 0, name: '' };
-  }
-
-  /** @private Returns true if `len` bytes starting at absolute `pos` are all printable ASCII. */
-  _nameOk(pos, len) {
-    if (len === 0) return true;
-    for (let i = 0; i < len; i++) {
-      const c = this._bytes[pos + i];
-      if (c === undefined || c < 0x20 || c > 0x7E) return false;
-    }
-    return true;
-  }
+  /** RP66 V1 B.23: origin UVARI, copy USHORT (ONE byte), IDENT. */
+  obname() { return { origin: this.uvari(), copy: this.u8(), name: this.ident() }; }
 
   /**
    * OBJREF — type + OBNAME: { type, name }.
@@ -216,7 +142,7 @@ export class BinaryReader {
     const mo = this.u8() & 0x0F; // lower nibble = month 1-12
     const dy = this.u8();
     const h  = this.u8(), mi = this.u8(), s  = this.u8();
-    const ms = this._view.getUint16(this._pos, false); this._pos += 2;
+    const ms = this.u16();
     return new Date(Date.UTC(1900 + yr, mo - 1, dy, h, mi, s, ms));
   }
 
@@ -234,8 +160,8 @@ export class BinaryReader {
       case RC.ISINGL: return this.isingl();
       case RC.VSINGL: return this.vsingl();
       case RC.FDOUBL: return this.f64();
-      case RC.FDOUB1: { const v = this.f64(); this.skip(4);  return v; }
-      case RC.FDOUB2: { const v = this.f64(); this.skip(8);  return v; }
+      case RC.FDOUB1: { const v = this.f64(); this.skip(8);  return v; }
+      case RC.FDOUB2: { const v = this.f64(); this.skip(16);  return v; }
       case RC.CSINGL: { const re = this.f32(), im = this.f32(); return { re, im }; }
       case RC.CDOUBL: { const re = this.f64(), im = this.f64(); return { re, im }; }
       case RC.SSHORT: return this.i8();
@@ -251,7 +177,7 @@ export class BinaryReader {
       case RC.ORIGIN: return this.uvari();
       case RC.OBNAME: return this.obname();
       case RC.OBJREF: return this.objref();
-      case RC.ATTREF: return { label: this.ident(), name: this.obname() };
+      case RC.ATTREF: return { type: this.ident(), name: this.obname(), label: this.ident() };
       case RC.STATUS: return Boolean(this.u8());
       case RC.UNITS:  return this.ident();
       default: throw new Error(`Unknown representation code: ${rc}`);

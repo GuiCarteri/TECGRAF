@@ -200,13 +200,16 @@ try {
       channel: "VDL",
       rawValue: 3.5,
     };
+  const region = {id:'r',fileHash:hash,track:'[0,"frame","channel"]',depthName:'DEPTH',stride:8,from:100,to:110,first:0,last:7,label:'Revisar',note:'manual'};
   const saved = await call(
     "analyses",
     "POST",
-    { hash, name: "Test", fileName: "local.dlis", points: [point] },
+    { hash, name: "Test", fileName: "local.dlis", points: [point], settings:{regions:[region]} },
     "reader",
   );
   assert.equal(saved.status, 200, JSON.stringify(saved.data));
+  assert.deepEqual((await call('analyses?hash='+hash,'GET',undefined,'reader')).data.analyses[0].settings.regions,[region]);
+  assert.equal((await call('analyses','POST',{hash,name:'Invalid',points:[],settings:{regions:[{...region,fileHash:'wrong'}]}},'reader')).status,400);
   assert.equal(
     (await call("analyses?hash=" + hash, "GET", undefined, "reader")).data
       .analyses[0].points[0].rawValue,

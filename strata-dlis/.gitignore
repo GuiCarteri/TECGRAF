@@ -49,3 +49,11 @@ next-env.d.ts
 
 /test-results/
 *.log
+
+# Local science environments and source data
+__pycache__/
+*.py[cod]
+.venv/
+*.dlis
+*.DLIS
+*.npz

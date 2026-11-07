@@ -1,10 +1,10 @@
 import { createRequire } from "node:module";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import assert from "node:assert/strict";
 // PLAYWRIGHT_MODULE is an optional external test-runner installation.
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
-const browser = await chromium.launch({
+const browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH,
   headless: true,
   args: ["--no-sandbox"],
 });
@@ -57,6 +57,7 @@ const metadata = {
 };
 let workerLoads = 0;
 await page.route("**/workers/dlis.worker.ts*", async (route) => {
+  if (!route.request().url().includes("worker_file")) return route.continue();
   workerLoads++;
   await route.fulfill({
     contentType: "text/javascript",

@@ -10,8 +10,8 @@ export const RC = Object.freeze({
   ISINGL: 5,   // IBM single precision
   VSINGL: 6,   // VAX F-float
   FDOUBL: 7,   // IEEE 754 double
-  FDOUB1: 8,   // IEEE double + 4-byte exponent (12 bytes total)
-  FDOUB2: 9,   // IEEE double + 8-byte bounds (16 bytes total)
+  FDOUB1: 8,   // IEEE double + double confidence interval (16 bytes total)
+  FDOUB2: 9,   // IEEE double + two double bounds (24 bytes total)
   CSINGL: 10,  // Complex single (real 4B + imag 4B)
   CDOUBL: 11,  // Complex double (real 8B + imag 8B)
   SSHORT: 12,  // Signed int8
@@ -22,7 +22,7 @@ export const RC = Object.freeze({
   ULONG:  17,  // Unsigned int32 BE
   UVARI:  18,  // Variable-length unsigned int (1, 2, or 4 bytes)
   IDENT:  19,  // Short ASCII string (1-byte length prefix)
-  ASCII:  20,  // Long ASCII string (4-byte ULONG length prefix)
+  ASCII:  20,  // Long ASCII string (UVARI length prefix)
   DTIME:  21,  // 8-byte date-time
   ORIGIN: 22,  // Origin reference (UVARI alias)
   OBNAME: 23,  // Object name triplet
@@ -41,8 +41,8 @@ RC_SIZE[RC.FSING2]  = 12;
 RC_SIZE[RC.ISINGL]  = 4;
 RC_SIZE[RC.VSINGL]  = 4;
 RC_SIZE[RC.FDOUBL]  = 8;
-RC_SIZE[RC.FDOUB1]  = 12;
-RC_SIZE[RC.FDOUB2]  = 16;
+RC_SIZE[RC.FDOUB1]  = 16;
+RC_SIZE[RC.FDOUB2]  = 24;
 RC_SIZE[RC.CSINGL]  = 8;
 RC_SIZE[RC.CDOUBL]  = 16;
 RC_SIZE[RC.SSHORT]  = 1;

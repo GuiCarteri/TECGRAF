@@ -38,8 +38,7 @@ export function parseEFLR(data) {
     if (ad & 0x01) {
       attr.value = [];
       for (let i = 0; i < attr.count; i++) {
-        try { attr.value.push(r.val(attr.repcode)); }
-        catch { attr.value.push(null); break; }
+        attr.value.push(r.val(attr.repcode));
       }
     }
     template.push(attr);
@@ -75,17 +74,8 @@ export function parseEFLR(data) {
       const ad2 = r.u8();
 
       if (role2 === 0) {
-        // ABSATR — attribute is absent; keep template default.
-        // Baker Hughes ATLAS may set format bits on ABSATR; consume their extra bytes.
-        if (ad2 & 0x08) try { r.uvari(); } catch { /* skip */ }
-        if (ad2 & 0x04) try { r.u8();    } catch { /* skip */ }
-        if (ad2 & 0x02) try { r.ident(); } catch { /* skip */ }
-        if (ad2 & 0x01) {
-          const ta = attrs[ai];
-          const cnt = ta ? ta.count : 1;
-          const rc  = ta ? ta.repcode : RC.IDENT;
-          for (let i = 0; i < cnt; i++) { try { r.val(rc); } catch { break; } }
-        }
+        // ABSATR explicitly removes the attribute; it must not inherit defaults.
+        attrs[ai] = { ...attrs[ai], value: null, count: 0 };
         ai++; continue;
       }
 
@@ -98,8 +88,7 @@ export function parseEFLR(data) {
       if (ad2 & 0x01) {
         at.value = [];
         for (let i = 0; i < at.count; i++) {
-          try { at.value.push(r.val(at.repcode)); }
-          catch { at.value.push(null); break; }
+          at.value.push(r.val(at.repcode));
         }
       }
       attrs[ai] = at;
@@ -134,7 +123,7 @@ export function normalizeRC(rc) {
     const code = RC_BY_NAME[rc.trim().toUpperCase()];
     if (code != null) return code;
   }
-  return RC.FSINGL; // fallback
+  return null; // Unknown encodings must never be guessed.
 }
 
 /**

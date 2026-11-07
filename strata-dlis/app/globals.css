@@ -1,4 +1,5 @@
 @import "../styles/strata.css";
+@import "../styles/workspace.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
@@ -85,5 +86,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Inter, "Segoe UI", "Noto Sans", "Noto Sans CJK SC", Arial, sans-serif;
 }
