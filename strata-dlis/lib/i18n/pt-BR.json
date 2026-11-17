@@ -507,5 +507,10 @@
   "Importar marcações JSON": "Importar marcações JSON",
   "Arquivo incompatível": "Arquivo incompatível",
   "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.": "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.",
-  "Remover": "Remover"
+  "Remover": "Remover",
+  "Apagar publicação": "Apagar publicação",
+  "Apagando…": "Apagando…",
+  "Publicação apagada.": "Publicação apagada.",
+  "Exclusão pendente": "Exclusão pendente",
+  "Apagar publicação permanentemente? O arquivo será removido. Análises e exportações serão preservadas.": "Apagar publicação permanentemente? O arquivo será removido. Análises e exportações serão preservadas."
 }

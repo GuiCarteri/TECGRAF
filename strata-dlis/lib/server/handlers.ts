@@ -28,14 +28,17 @@ async function body(req: Request, limit = 5_000_000) {
   if (text.length > limit)
     throw new HttpError("Conteúdo excede o limite permitido.", 413);
   try {
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      throw new Error("Invalid body");
+    return parsed;
   } catch {
     throw new HttpError("Dados inválidos.");
   }
 }
 async function fileById(id: string, user: any) {
   const f = await query("SELECT * FROM files WHERE id=?", id).first<any>();
-  if (!f || !mayRead(f, user))
+  if (!f || f.status === "deleting" || !mayRead(f, user))
     throw new HttpError("Arquivo não encontrado ou sem permissão.", 404);
   return f;
 }
@@ -76,6 +79,24 @@ export async function handle(request: Request, path: string[]) {
         });
       }
       return json({ file: parseFile(f) });
+    }
+    if (route === "files" && id && !action && request.method === "DELETE") {
+      const user = await requireUser();
+      const file = await query("SELECT * FROM files WHERE id=?", id).first<{
+        owner_id: string;
+        object_key: string;
+      }>();
+      if (!file || (file.owner_id !== user.id && user.role !== "admin"))
+        throw new HttpError("Arquivo não encontrado ou sem permissão.", 404);
+      // D1 and R2 cannot share a transaction. Hide first and retain the key
+      // until removal succeeds, so a failed request can safely be retried.
+      await query("UPDATE files SET status='deleting' WHERE id=?", id).run();
+      await bucket().delete(file.object_key);
+      await database().batch([
+        query("UPDATE history SET file_id=NULL WHERE file_id=?", id),
+        query("DELETE FROM files WHERE id=?", id),
+      ]);
+      return json({ ok: true });
     }
     if (route === "uploads" && request.method === "POST" && !id) {
       const user = await requireUser(["publisher", "admin"]),
@@ -139,18 +160,37 @@ export async function handle(request: Request, path: string[]) {
         );
         if (bytes.byteLength !== expected || expected <= 0)
           throw new HttpError("Tamanho da parte inválido.");
-        if (n === 1) validateHeader(bytes);
+        if (n === 1) {
+          try {
+            validateHeader(bytes);
+          } catch {
+            throw new HttpError("Arquivo não parece ser DLIS RP66 V1.");
+          }
+        }
         return json(await upload.uploadPart(n, bytes));
       }
       if (request.method === "POST" && action === "complete") {
         const b = await body(request),
           m = b.metadata;
         if (
-          !b.authorized ||
-          !b.confirmed ||
+          b.authorized !== true ||
+          b.confirmed !== true ||
           !m ||
           m.version !== "V1.00" ||
           !Array.isArray(m.logicalFiles) ||
+          !m.logicalFiles.every(
+            (lf: { frames?: { channels?: unknown[] }[] } | null) =>
+              lf &&
+              Array.isArray(lf.frames) &&
+              lf.frames.every(
+                (frame) =>
+                  frame &&
+                  Array.isArray(frame.channels) &&
+                  frame.channels.every(
+                    (channel) => channel && typeof channel === "object",
+                  ),
+              ),
+          ) ||
           !str(b.collection) ||
           !str(b.company)
         )
@@ -228,8 +268,13 @@ export async function handle(request: Request, path: string[]) {
             1,
             now(),
           ).run();
-        } catch (e) {
-          await bucket().delete(row.object_key);
+        } catch {
+          // A concurrent completion may already have registered these bytes.
+          const registered = await query(
+            "SELECT id FROM files WHERE object_key=?",
+            row.object_key,
+          ).first();
+          if (!registered) await bucket().delete(row.object_key);
           throw new HttpError(
             "Arquivo duplicado ou publicação não pôde ser registrada.",
             409,
@@ -421,7 +466,7 @@ export async function handle(request: Request, path: string[]) {
             "Abra o arquivo, revise os dados e registre uma justificativa.",
           );
         await query(
-          "UPDATE files SET status=?,collection=COALESCE(?,collection),review_note=?,reviewer_id=?,published_at=? WHERE id=?",
+          "UPDATE files SET status=?,collection=COALESCE(?,collection),review_note=?,reviewer_id=?,published_at=? WHERE id=? AND status!='deleting'",
           b.status,
           str(b.collection) || null,
           str(b.note, 2000),

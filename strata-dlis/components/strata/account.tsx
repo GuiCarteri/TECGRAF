@@ -20,6 +20,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { api } from "@/lib/api";
+import { DeletePublication } from "./delete-publication";
 export function Account() {
   const { translate, message, locale } = useI18n();
   const [data, setData] = useState<any>(null),
@@ -32,15 +33,16 @@ export function Account() {
       api("my-files"),
       api("exports"),
     ])
-      .then(([me, a, h, f, e]) =>
+      .then(([me, a, h, f, e]) => {
+        if (!me.user) throw new Error("AUTH_EXPIRED");
         setData({
           user: me.user,
           analyses: a.analyses,
           history: h.history,
           files: f.files,
           exports: e.exports,
-        }),
-      )
+        });
+      })
       .catch((e) => setError(e.message));
   }, []);
   return (
@@ -236,6 +238,7 @@ export function Account() {
                                     review: translate("Revisão necessária"),
                                     validated: translate("Validado"),
                                     archived: translate("Arquivado"),
+                                    deleting: translate("Exclusão pendente"),
                                   } as any
                                 )[f.status]
                               }
@@ -248,6 +251,24 @@ export function Account() {
                           >
                             {translate("Visualizar")}
                           </a>
+                          <DeletePublication
+                            id={f.id}
+                            name={f.original_name}
+                            onDeleted={(id) =>
+                              setData((current: typeof data) => ({
+                                ...current,
+                                files: current.files.filter(
+                                  (file: { id: string }) => file.id !== id,
+                                ),
+                                history: current.history.map(
+                                  (entry: { file_id: string | null }) =>
+                                    entry.file_id === id
+                                      ? { ...entry, file_id: null }
+                                      : entry,
+                                ),
+                              }))
+                            }
+                          />
                         </div>
                       ))
                     )}

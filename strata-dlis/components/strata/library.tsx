@@ -43,7 +43,22 @@ export function Library() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  useEffect(() => {
+    let active = true;
+    api("files")
+      .then((d) => {
+        if (active) setFiles(d.files);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const sources = [...new Set(files.map((f) => f.collection))].sort();
   const filtered = files.filter(
     (f) =>

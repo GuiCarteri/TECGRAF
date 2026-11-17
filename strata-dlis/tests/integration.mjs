@@ -3,7 +3,7 @@
 import { createRequire } from "node:module";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import assert from "node:assert/strict";
 const require = createRequire(import.meta.resolve("wrangler"));
 const { Miniflare } = require("miniflare");
@@ -312,6 +312,16 @@ try {
     "reader",
   );
   assert.equal(upload.status, 200);
+  const invalidHeader = await mf.dispatchFetch("https://strata.test/api/uploads/" + upload.data.id + "/part?n=1", {
+    method: "PUT", headers: { Origin: "https://strata.test", Cookie: [...jars.get("reader")].map(([k,v]) => k + "=" + v).join("; ") }, body: new Uint8Array(84),
+  });
+  assert.equal(invalidHeader.status, 400);
+  for (const metadata of [{ version: "V1.00", logicalFiles: [null] }, { version: "V1.00", logicalFiles: [{ frames: [null] }] }]) {
+    const invalid = await call("uploads/" + upload.data.id + "/complete", "POST", { authorized: true, confirmed: true, collection: "Test", company: "Test", metadata }, "reader");
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.data.error, "Confirme os metadados, a empresa e a autorização.");
+  }
+
   assert.equal(
     (await call("uploads/" + upload.data.id, "DELETE", undefined, "other"))
       .status,
@@ -334,6 +344,61 @@ try {
     ).status,
     403,
   );
+  // Deletion uses synthetic data only; owners and admins can delete, others cannot.
+  const storage = await mf.getR2Bucket("BUCKET");
+  async function seedPublication(id, status = "validated") {
+    await storage.put("dlis/" + id, "synthetic bytes");
+    await db.prepare("INSERT INTO files (id,hash,owner_id,publisher,original_name,size,object_key,collection,metadata,status,visibility,authorization,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(id, id.padEnd(64, "0"), "supabase:reader", "reader", "fixture.dlis", 15, "dlis/" + id, "Tests", "{}", status, "public", 1, "2026-01-01").run();
+  }
+  await seedPublication("delete-owner");
+  await call("history", "POST", { hash, fileName: "fixture.dlis", fileId: "delete-owner" }, "reader");
+  assert.equal((await call("files/delete-owner", "DELETE")).status, 401);
+  assert.equal((await call("files/delete-owner", "DELETE", undefined, "other")).status, 404);
+  assert.equal((await call("files/delete-owner", "DELETE", undefined, "reader", { Origin: "https://evil.test" })).status, 403);
+  assert.ok(await storage.head("dlis/delete-owner"));
+  assert.ok(await db.prepare("SELECT id FROM files WHERE id='delete-owner'").first());
+  assert.equal((await call("files/delete-owner", "DELETE", undefined, "reader")).status, 200);
+  assert.equal(await storage.head("dlis/delete-owner"), null);
+  assert.equal(await db.prepare("SELECT id FROM files WHERE id='delete-owner'").first(), null);
+  assert.equal((await call("history", "GET", undefined, "reader")).data.history[0].file_id, null);
+  assert.equal((await call("analyses", "GET", undefined, "reader")).data.analyses.length, 1);
+  assert.equal((await call("exports", "GET", undefined, "reader")).data.exports.length, 1);
+  assert.equal((await call("files/delete-owner", "GET", undefined, "reader")).status, 404);
+  assert.equal((await call("files/delete-owner/content", "GET", undefined, "admin")).status, 404);
+  assert.equal((await call("files/delete-owner", "DELETE", undefined, "reader")).status, 404);
+  for (const status of ["pending", "review", "archived", "validated"]) {
+    const id = "delete-admin-" + status;
+    await seedPublication(id, status);
+    assert.equal((await call("files/" + id, "DELETE", undefined, "admin")).status, 200);
+    assert.equal(await storage.head("dlis/" + id), null);
+  }
+  // A second completion must never remove bytes registered by the first.
+  const duplicateBytes = new Uint8Array(84);
+  const duplicateHash = createHash("sha256").update(duplicateBytes).digest("hex");
+  const duplicate = await call("uploads", "POST", { name: "race.dlis", size: 84, hash: duplicateHash }, "reader");
+  const duplicateId = duplicate.data.id;
+  assert.equal(duplicate.status, 200);
+  await seedPublication(duplicateId, "pending");
+  await storage.put("dlis/" + duplicateId, duplicateBytes);
+  const completed = await call("uploads/" + duplicateId + "/complete", "POST", {
+    authorized: true, confirmed: true, collection: "Test", company: "Test",
+    metadata: { version: "V1.00", logicalFiles: [] }, parts: [{ partNumber: 1, etag: "fixture" }],
+  }, "reader");
+  assert.equal(completed.status, 409);
+  assert.ok(await storage.head("dlis/" + duplicateId));
+  assert.ok(await db.prepare("SELECT id FROM files WHERE id=?").bind(duplicateId).first());
+  // Simulate interruption between hiding the publication and storage cleanup.
+  await seedPublication("delete-retry", "deleting");
+  assert.ok(!(await call("files")).data.files.some(f => f.id === "delete-retry"));
+  assert.equal((await call("files/delete-retry/content", "GET", undefined, "admin")).status, 404);
+  await call("admin/files", "POST", { id: "delete-retry", status: "validated", reviewed: true, note: "review" }, "admin");
+  assert.equal((await db.prepare("SELECT status FROM files WHERE id='delete-retry'").first()).status, "deleting");
+  await storage.delete("dlis/delete-retry");
+  assert.equal((await call("files/delete-retry", "DELETE", undefined, "reader")).status, 200);
+  for (const invalid of [null, [], "text", 123])
+    assert.equal((await call("analyses", "POST", invalid, "reader")).status, 400);
+  console.log("PASS: publication deletion permissions, CSRF, R2 cleanup, history, preservation and retry; invalid JSON bodies");
   const oldAccess = jars.get("reader").get("strata_access");
   tokens.delete(oldAccess);
   assert.equal(

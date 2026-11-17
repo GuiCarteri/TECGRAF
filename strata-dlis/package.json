@@ -24,7 +24,8 @@
     "test:browser:scientific": "node tests/run-browser.mjs tests/scientific-browser.mjs",
     "test:browser:real": "node tests/run-browser.mjs tests/real-browser.mjs",
     "test:python": "python3 -m unittest discover -s science -p test_science.py",
-    "test:reference": "python3 scripts/verify-reference.py"
+    "test:reference": "python3 scripts/verify-reference.py",
+    "test:browser:publications": "node tests/run-browser.mjs tests/publications-browser.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

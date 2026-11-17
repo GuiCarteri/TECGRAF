@@ -63,6 +63,14 @@ Para inicializar o primeiro administrador, obtenha seu UUID confirmado em Supaba
 
 Identidades antigas não são associadas por e-mail. Veja [docs/MIGRACAO_IDENTIDADES.md](docs/MIGRACAO_IDENTIDADES.md).
 
+## Apagar publicações
+
+Em **Minha conta → Publicações**, o autor pode apagar sua publicação. Administradores também podem apagar pela lista de arquivos da administração. A confirmação informa que a exclusão é permanente: os bytes são removidos do R2 e a publicação do catálogo. Análises, pontos e registros de exportação permanecem; links do histórico são desvinculados.
+
+Uma exclusão interrompida fica como **Exclusão pendente**, bloqueada para download e aprovação. Clique novamente em **Apagar publicação** para concluir. A aplicação não pode revogar cópias já baixadas. Não é necessário alterar o esquema do banco.
+
+Validação desta etapa: [docs/CODE_VALIDATION.md](docs/CODE_VALIDATION.md).
+
 ## Banco e armazenamento
 
 As migrações em `drizzle/` preservam o esquema existente. `pnpm db:migrate:local` aplica apenas na emulação local. Arquivos são enviados em partes ao R2 e têm seu SHA-256 conferido no servidor; a visibilidade pública depende de revisão e aprovação. Não habilite acesso público direto ao bucket: o download passa pela API autorizada.
