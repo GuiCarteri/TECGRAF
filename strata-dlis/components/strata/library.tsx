@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, formatBytes } from "@/lib/api";
+import { readCatalogFiles, type CatalogFile } from "@/lib/catalog";
 import { Pick } from "./controls";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/empty";
 export function Library() {
   const { translate, message, locale } = useI18n();
-  const [files, setFiles] = useState<any[]>([]),
+  const [files, setFiles] = useState<CatalogFile[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [q, setQ] = useState(""),
@@ -39,7 +40,7 @@ export function Library() {
     setLoading(true);
     setError("");
     api("files")
-      .then((d) => setFiles(d.files))
+      .then((d) => setFiles(readCatalogFiles(d)))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
@@ -47,7 +48,7 @@ export function Library() {
     let active = true;
     api("files")
       .then((d) => {
-        if (active) setFiles(d.files);
+        if (active) setFiles(readCatalogFiles(d));
       })
       .catch((e) => {
         if (active) setError(e.message);
