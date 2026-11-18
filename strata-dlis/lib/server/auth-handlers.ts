@@ -7,6 +7,7 @@ import {
   refreshSession,
 } from "./provider";
 import { sameOrigin, HttpError } from "./auth";
+import { validPasswordLength } from "../auth-policy";
 export async function authHandler(request: Request, action: string) {
   try {
     if (action === "config" && request.method === "GET")
@@ -36,12 +37,14 @@ export async function authHandler(request: Request, action: string) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
       throw new HttpError("Informe um e-mail válido.");
     if (
-      ["login", "register", "change-password"].includes(action) &&
-      (typeof b.password !== "string" ||
-        b.password.length < 8 ||
-        b.password.length > 200)
+      (action === "login" || action === "register" || action === "change-password") &&
+      !validPasswordLength(action, b.password)
     )
-      throw new HttpError("Use uma senha de 8 a 200 caracteres.");
+      throw new HttpError(
+        action === "login"
+          ? "Informe sua senha."
+          : "Use uma senha de 8 a 200 caracteres.",
+      );
     if (action === "login") {
       await writeSession(
         await providerRequest("token?grant_type=password", {
