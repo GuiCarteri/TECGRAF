@@ -326,9 +326,12 @@ export function Library() {
                             </div>
                           </dl>
                           <div className="card-publisher">
-                            {new Date(f.published_at).toLocaleDateString(
-                              locale,
-                            )}{" "}
+                            {f.published_at &&
+                            !Number.isNaN(Date.parse(f.published_at))
+                              ? new Date(f.published_at).toLocaleDateString(
+                                  locale,
+                                )
+                              : translate("Não disponível")}{" "}
                             · {f.publisher}
                           </div>
                           <a
