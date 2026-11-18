@@ -1,4 +1,11 @@
 {
+  "Painel de dados": "数据面板",
+  "Volume dos arquivos": "文件总大小",
+  "Arquivos por tipo de perfil": "按测井类型统计文件",
+  "Arquivos por ambiente": "按环境统计文件",
+  "Cinco coleções com mais arquivos": "按文件数量排名前五的集合",
+  "Cinco maiores arquivos": "最大的五个文件",
+  "Os percentuais usam os arquivos filtrados. Um arquivo pode conter mais de um tipo de perfil.": "百分比以筛选出的文件为基数。一个文件可包含多种测井类型。",
   "Prontidão dos dados": "数据就绪度",
   "O menor critério define o IPD. CBL e VDL exigem profundidades comparáveis e o índice considera a cobertura comum.": "就绪度取各项指标中的最低值。CBL 与 VDL 需要可比较的深度轴，并计入共同覆盖范围。",
   "Completude das amostras": "样本完整性",
