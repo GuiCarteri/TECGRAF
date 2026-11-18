@@ -2,17 +2,23 @@
 import { useId } from "react";
 import { useI18n } from "@/lib/i18n/provider";
 import { languageNames, locales, parseLocale } from "@/lib/i18n";
+
+/**
+ * Keep instantaneous React translation when hydration works.
+ * The ordinary GET form remains usable if the browser's RSC bundle fails.
+ */
 export function LanguageSelector() {
   const { locale, setLocale, translate } = useI18n();
   const id = useId();
   return (
-    <div className="language-selector">
+    <form className="language-selector" action="/api/locale" method="get">
       <label htmlFor={id} className="sr-only">
         {translate("language")}
       </label>
       <select
         id={id}
-        value={locale}
+        name="lang"
+        defaultValue={locale}
         onChange={(e) => setLocale(parseLocale(e.target.value))}
       >
         {locales.map((code) => (
@@ -21,6 +27,9 @@ export function LanguageSelector() {
           </option>
         ))}
       </select>
-    </div>
+      <button className="language-apply" type="submit">
+        {translate("Aplicar")}
+      </button>
+    </form>
   );
 }
