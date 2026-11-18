@@ -153,12 +153,28 @@ try {
   );
   await filter("missing");
   assert.equal(dashboard(), null);
-  await act(async () =>
-    doc.querySelector(".catalog-empty button").click(),
-  );
+  await act(async () => doc.querySelector(".catalog-empty button").click());
   assert.equal(dashboard().querySelector("dd").textContent, "2");
   console.log(
     "PASS: dashboard toggle, charts and rankings follow search, empty state and filter reset",
+  );
+  const well = (usit) => ({
+    version: 1,
+    hash: "a".repeat(64),
+    groups: [{ lf: 0, well: "Well A", curves: [], usit, cblVdl: null }],
+  });
+  await window.strataTest.mountWell(well(90), well(65));
+  const panel = doc.querySelector("details.panel");
+  await act(async () => {
+    panel.open = true;
+    panel.dispatchEvent(new window.Event("toggle"));
+  });
+  assert.match(panel.textContent, /90 \/ 100/);
+  assert.match(panel.textContent, /65 \/ 100/);
+  await window.strataTest.mountWell(well(90), null);
+  assert.doesNotMatch(panel.textContent, /65 \/ 100/);
+  console.log(
+    "PASS: viewer distinguishes current scores, saved scores and legacy interpretations",
   );
   window.strataTest.unmount();
   console.log(

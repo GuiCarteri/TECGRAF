@@ -1,3 +1,4 @@
+import { readWellAssessment } from "../model/well-assessment";
 import { modelHandler } from "./model-handlers";
 import { validateRegions } from "../dlis/regions";
 import { hasRefresh } from "./provider";
@@ -330,6 +331,11 @@ export async function handle(request: Request, path: string[]) {
           )
             throw new HttpError("Ponto sem referência válida ao array.");
         }
+        if (
+          b.settings?.wellAssessment !== undefined &&
+          !readWellAssessment(b.settings.wellAssessment, b.hash)
+        )
+          throw new HttpError("Dados inválidos.");
         if (b.settings?.regions !== undefined) {
           try {
             b.settings.regions = validateRegions(b.settings.regions, b.hash);
