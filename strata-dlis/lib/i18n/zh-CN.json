@@ -1,4 +1,10 @@
 {
+  "Completude das amostras": "样本完整性",
+  "Cobertura do intervalo observado": "实测深度区间覆盖率",
+  "Consistência da direção da profundidade": "深度方向一致性",
+  "Unidades da curva e da profundidade": "曲线与深度单位",
+  "Plausibilidade da amplitude ou impedância": "幅度或阻抗合理性",
+  "Rastreabilidade da origem": "来源可追溯性",
   "GUIA TÉCNICO": "技术指南",
   "Do arquivo à amostra.": "从文件到样本。",
   "Uma biblioteca com origem identificada": "来源可追溯的资料库",
