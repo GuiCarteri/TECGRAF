@@ -12,3 +12,12 @@ No visualizador, abra **Metadados e auditoria** após carregar uma curva. O cál
 | Rastreabilidade | Controles presentes / cinco: SHA-256, índice do logical file, chave do frame, chave do canal com nome inequívoco no frame e numeração das linhas. |
 
 As métricas são por curva carregada. A plausibilidade avalia uma propriedade do sinal. A classificação do cimento exige interpretação própria.
+
+## IPD v1 por modalidade
+
+Em **Metadados e auditoria**, os dois índices medem a prontidão das curvas selecionadas para inspeção no intervalo observado, de 0 a 100. A regra operacional v1 é conservadora e ainda requer validação com dados de campo. Uma pontuação alta não atesta a qualidade da cimentação.
+
+- **USIT:** 100 vezes a menor fração entre os seis critérios de qualidade da curva de impedância.
+- **CBL/VDL:** menor valor entre a prontidão de cada curva e o percentual de metros com cobertura simultânea, relativo à extensão entre os extremos das duas curvas. Para VDL, entram cinco critérios: a forma de onda admite valores negativos e a regra de amplitude não se aplica.
+- Curva necessária ausente ou profundidade sem intervalo mensurável produz “Não disponível”. Para o par, exigem-se o mesmo logical file e o mesmo nome de canal de profundidade. Os eixos são convertidos em metros pelo leitor. Essa comparação pressupõe a mesma referência de profundidade.
+- Curvas comparáveis sem sobreposição recebem zero. Em CBL e USIT, a ausência total de leituras válidas em um intervalo mensurável também resulta em zero. Os limites e as lacunas são os mesmos da cobertura individual.

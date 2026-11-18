@@ -1,7 +1,8 @@
 "use client";
 import { useMemo } from "react";
 import type { Track } from "@/lib/dlis/plotting";
-import { curveQuality } from "@/lib/dlis/quality";
+import { assessReadiness } from "@/lib/dlis/readiness";
+import type { curveQuality } from "@/lib/dlis/quality";
 import { useI18n } from "@/lib/i18n/provider";
 
 const labels = {
@@ -13,9 +14,14 @@ const labels = {
   traceability: "Rastreabilidade da origem",
 } as const;
 
-export function CurveQuality({ track, hash }: { track: Track; hash: string }) {
+function CurveQuality({
+  track,
+  metrics,
+}: {
+  track: Track;
+  metrics: ReturnType<typeof curveQuality>;
+}) {
   const { translate, number } = useI18n();
-  const metrics = useMemo(() => curveQuality(track, hash), [track, hash]);
   return (
     <section>
       <h4>
@@ -38,5 +44,48 @@ export function CurveQuality({ track, hash }: { track: Track; hash: string }) {
         })}
       </dl>
     </section>
+  );
+}
+
+export function QualityAudit({
+  tracks,
+  hash,
+}: {
+  tracks: Record<string, Track>;
+  hash: string;
+}) {
+  const { translate, number } = useI18n();
+  const { curves, usit, cblVdl } = useMemo(
+    () => assessReadiness(tracks, hash),
+    [tracks, hash],
+  );
+  const score = (value: number | null) =>
+    value === null
+      ? translate("Não disponível")
+      : number(value, { maximumFractionDigits: 1 }) + " / 100";
+  return (
+    <>
+      <section>
+        <h3>{translate("Prontidão dos dados")}</h3>
+        <dl className="meta-grid">
+          <div>
+            <dt>IPD USIT</dt>
+            <dd>{score(usit)}</dd>
+          </div>
+          <div>
+            <dt>IPD CBL/VDL</dt>
+            <dd>{score(cblVdl)}</dd>
+          </div>
+        </dl>
+        <p>
+          {translate(
+            "O menor critério define o IPD. CBL e VDL exigem profundidades comparáveis e o índice considera a cobertura comum.",
+          )}
+        </p>
+      </section>
+      {curves.map(({ track, quality }) => (
+        <CurveQuality key={track.kind} track={track} metrics={quality} />
+      ))}
+    </>
   );
 }

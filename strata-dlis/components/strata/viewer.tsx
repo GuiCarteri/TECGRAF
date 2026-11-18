@@ -1,5 +1,5 @@
 "use client";
-import { CurveQuality } from "./curve-quality";
+import { QualityAudit } from "./curve-quality";
 import { useI18n } from "@/lib/i18n/provider";
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
@@ -1231,9 +1231,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
               {meta?.version}
             </DialogDescription>
           </DialogHeader>
-          {metadataOpen && meta && Object.values(tracks).map(track => (
-            <CurveQuality key={track.kind} track={track} hash={meta.hash} />
-          ))}
+          {metadataOpen && meta && <QualityAudit tracks={tracks} hash={meta.hash} />}
           {meta?.warnings.map((w: string, i: number) => (
             <div className="notice warning" key={i}>
               {message(w)}

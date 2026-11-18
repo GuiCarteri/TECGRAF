@@ -6,7 +6,11 @@ function ratio(passed: number, total: number) {
 }
 
 /** Audit the selected raw curve, over its observed depth interval, before scaling or gain. */
-export function curveQuality(track: Track, sourceHash: string) {
+export function curveQuality(
+  track: Track,
+  sourceHash: string,
+  onCovered?: (start: number, end: number) => void,
+) {
   const { channel, frame, result, stride, depth, index, kind } = track;
   const values = result.data[channel.name] as ArrayLike<number>;
   const rows = result.frameCount as number;
@@ -59,8 +63,10 @@ export function curveQuality(track: Track, sourceHash: string) {
     } while (i < indices.length && depth[indices[i]] === z);
     if (!Number.isFinite(first)) first = z;
     const distance = z - previous;
-    if (previousPresent && observed && distance <= 1.5 * index.step)
+    if (previousPresent && observed && distance <= 1.5 * index.step) {
       covered += distance;
+      onCovered?.(previous, z);
+    }
     previous = z;
     previousPresent = observed;
   }

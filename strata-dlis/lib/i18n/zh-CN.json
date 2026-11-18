@@ -1,4 +1,6 @@
 {
+  "Prontidão dos dados": "数据就绪度",
+  "O menor critério define o IPD. CBL e VDL exigem profundidades comparáveis e o índice considera a cobertura comum.": "就绪度取各项指标中的最低值。CBL 与 VDL 需要可比较的深度轴，并计入共同覆盖范围。",
   "Completude das amostras": "样本完整性",
   "Cobertura do intervalo observado": "实测深度区间覆盖率",
   "Consistência da direção da profundidade": "深度方向一致性",
