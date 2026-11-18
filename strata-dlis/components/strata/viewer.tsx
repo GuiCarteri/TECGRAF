@@ -1,4 +1,10 @@
 "use client";
+import { WellAnalysis } from "./well-analysis";
+import {
+  wellAssessment,
+  readWellAssessment,
+  type WellAssessment,
+} from "@/lib/model/well-assessment";
 import { QualityAudit } from "./curve-quality";
 import { useI18n } from "@/lib/i18n/provider";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -106,6 +112,14 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     [progress, setProgress] = useState(""),
     [syncEnabled, setSyncEnabled] = useState(false),
     [closeRequested, setCloseRequested] = useState(false);
+  const [savedAssessment, setSavedAssessment] = useState<WellAssessment | null>(
+    null,
+  );
+  const currentAssessment = useMemo(() => {
+    let cached: WellAssessment | undefined;
+    return () =>
+      (cached ??= wellAssessment(tracks, meta.hash, meta.logicalFiles));
+  }, [tracks, meta]);
   const [regions, setRegions] = useState<Region[]>([]);
   const parser = useRef<DlisClient | null>(null),
     cache = useRef(new Map<string, Promise<any>>()),
@@ -291,6 +305,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     setRegions([]);
     setAnalyses([]);
     setAnalysisId("");
+    setSavedAssessment(null);
     setSavedAt("");
     setDirty(false);
     setMeta(null);
@@ -460,7 +475,9 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     if (input.current) input.current.value = "";
   }
   async function save() {
-    if (!meta) return;
+    if (!meta || Object.values(decoding).some(Boolean)) return;
+    const assessment = currentAssessment();
+    const activeGeneration = generation.current;
     setBusy("Salvando análise…");
     try {
       const d = await post("analyses", {
@@ -469,18 +486,29 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         fileName: file?.name,
         name: analysisName,
         points,
-        settings: { calibration, choices, from, to, agc, regions },
+        settings: {
+          calibration,
+          choices,
+          from,
+          to,
+          agc,
+          regions,
+          wellAssessment: assessment,
+        },
       });
+      if (generation.current !== activeGeneration) return;
+      setSavedAssessment(assessment);
       setAnalysisId(d.id);
       setDirty(false);
       setSavedAt(new Date().toISOString());
       const all = await api("analyses?hash=" + meta.hash);
+      if (generation.current !== activeGeneration) return;
       setAnalyses(all.analyses);
       toast.success(translate("Análise salva na sua conta."));
     } catch (e: any) {
       toast.error(message(e.message));
     } finally {
-      setBusy("");
+      if (generation.current === activeGeneration) setBusy("");
     }
   }
   async function restore(id: string) {
@@ -497,9 +525,12 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       return;
     }
     setPoints(a.points);
+    setSavedAssessment(
+      readWellAssessment(a.settings?.wellAssessment, meta.hash),
+    );
     setAnalysisId(a.id);
     setAnalysisName(a.name);
-    setCalibration(a.settings.calibration || calibration);
+    setCalibration(a.settings?.calibration || calibration);
     setDirty(false);
     setSavedAt(a.updated_at);
     toast.success(translate("Pontos recuperados."));
@@ -1146,7 +1177,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                 </button>
                 <button
                   className="button primary"
-                  disabled={!!busy}
+                  disabled={!!busy || Object.values(decoding).some(Boolean)}
                   onClick={save}
                 >
                   <Save size={16} />
@@ -1185,6 +1216,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                   setPoints([]);
                   setRegions([]);
                   setAnalysisId("");
+                  setSavedAssessment(null);
                   setAnalysisName("Nova análise");
                   setSavedAt("");
                   setDirty(false);
@@ -1193,6 +1225,11 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                 {translate("Nova análise")}
               </button>
             </div>
+            <WellAnalysis
+              current={currentAssessment}
+              saved={savedAssessment}
+              hasAnalysis={!!analysisId}
+            />
             <div className="panel points-panel">
               {points.length ? (
                 <PointsTable
@@ -1231,7 +1268,9 @@ export function Viewer({ file: remoteId }: { file?: string }) {
               {meta?.version}
             </DialogDescription>
           </DialogHeader>
-          {metadataOpen && meta && <QualityAudit tracks={tracks} hash={meta.hash} />}
+          {metadataOpen && meta && (
+            <QualityAudit tracks={tracks} hash={meta.hash} />
+          )}
           {meta?.warnings.map((w: string, i: number) => (
             <div className="notice warning" key={i}>
               {message(w)}

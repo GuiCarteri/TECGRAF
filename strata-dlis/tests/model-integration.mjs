@@ -35,7 +35,10 @@ export async function testDataModel({ call, db, storage }) {
   assert.equal((await call("wells/"+well.data.id,"GET",undefined,"reader")).data.files.length,2);
   assert.equal((await db.prepare("SELECT well FROM files WHERE id='model-a'").first()).well,"Same name");
   assert.deepEqual(JSON.parse((await db.prepare("SELECT metadata FROM files WHERE id='model-a'").first()).metadata),metadata);
-  const analysis=await call("analyses","POST",{hash:sourceHash,fileName:"synthetic.dlis",name:"Interpretation",points:[{fileHash:sourceHash,channel:"CBL",sampleIndex:0,componentIndex:0,rawValue:1.125}],settings:{regions:[]}},"reader");
+  const assessment={version:1,hash:sourceHash,groups:[]};
+  const mismatched=await call("analyses","POST",{hash:sourceHash,name:"Mismatched",points:[],settings:{wellAssessment:{...assessment,hash:"0".repeat(64)}}},"reader");
+  assert.equal(mismatched.status,400);
+  const analysis=await call("analyses","POST",{hash:sourceHash,fileName:"synthetic.dlis",name:"Interpretation",points:[{fileHash:sourceHash,channel:"CBL",sampleIndex:0,componentIndex:0,rawValue:1.125}],settings:{regions:[],wellAssessment:assessment}},"reader");
   assert.equal(analysis.status,200);
   const interpretation=await call("interpretations/"+analysis.data.id,"GET",undefined,"reader");
   assert.equal(interpretation.data.interpretations[0].well_id,well.data.id);
@@ -49,6 +52,8 @@ export async function testDataModel({ call, db, storage }) {
   const getReport=()=>call("reports/"+report.data.id,"GET",undefined,"reader");
   const original=(await getReport()).data.report;
   assert.equal(original.source_hash,sourceHash);
+  assert.deepEqual(original.source_snapshot.interpretation.settings.wellAssessment,assessment);
+  assert.deepEqual(interpretation.data.interpretations[0].settings.wellAssessment,assessment);
   assert.equal(original.source_snapshot.interpretation.points[0].rawValue,1.125);
   assert.equal((await call("reports/"+report.data.id,"GET",undefined,"admin")).status,404);
   assert.equal((await call("reports/"+report.data.id,"DELETE",undefined,"other")).status,404);

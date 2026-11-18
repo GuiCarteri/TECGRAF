@@ -5,7 +5,7 @@ import { assessReadiness } from "@/lib/dlis/readiness";
 import type { curveQuality } from "@/lib/dlis/quality";
 import { useI18n } from "@/lib/i18n/provider";
 
-const labels = {
+export const qualityLabels = {
   completeness: "Completude das amostras",
   coverage: "Cobertura do intervalo observado",
   consistency: "Consistência da direção da profundidade",
@@ -29,11 +29,11 @@ function CurveQuality({
         {track.frame.name}
       </h4>
       <dl className="meta-grid">
-        {(Object.keys(labels) as (keyof typeof labels)[]).map((key) => {
+        {(Object.keys(qualityLabels) as (keyof typeof qualityLabels)[]).map((key) => {
           const { fraction, passed, total } = metrics[key];
           return (
             <div key={key}>
-              <dt>{translate(labels[key])}</dt>
+              <dt>{translate(qualityLabels[key])}</dt>
               <dd>
                 {fraction === null
                   ? translate("Não disponível")
