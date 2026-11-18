@@ -507,5 +507,10 @@
   "Importar marcações JSON": "Import annotations JSON",
   "Arquivo incompatível": "Incompatible file",
   "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.": "Manual annotations. Save the analysis or export JSON to preserve them.",
-  "Remover": "Remove"
+  "Remover": "Remove",
+  "Apagar publicação": "Delete publication",
+  "Apagando…": "Deleting…",
+  "Publicação apagada.": "Publication deleted.",
+  "Exclusão pendente": "Deletion pending",
+  "Apagar publicação permanentemente? O arquivo será removido. Análises e exportações serão preservadas.": "Permanently delete this publication? The file will be removed. Analyses and exports will be preserved."
 }

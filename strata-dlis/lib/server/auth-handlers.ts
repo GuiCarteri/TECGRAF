@@ -1,3 +1,6 @@
+import { loginError } from "../auth-input";
+import { validPasswordLength } from "../auth-policy";
+import { safeNext } from "../auth-policy";
 import { cookies } from "next/headers";
 import {
   providerConfigured,
@@ -8,6 +11,11 @@ import {
 } from "./provider";
 import { sameOrigin, HttpError } from "./auth";
 export async function authHandler(request: Request, action: string) {
+  const native =
+    action === "login" &&
+    request.headers.get("content-type")?.split(";")[0] ===
+      "application/x-www-form-urlencoded";
+  let next = "/account";
   try {
     if (action === "config" && request.method === "GET")
       return Response.json(
@@ -31,17 +39,24 @@ export async function authHandler(request: Request, action: string) {
     }
     const text = await request.text();
     if (text.length > 6000) throw new HttpError("Formulário inválido.");
-    const b = JSON.parse(text || "{}"),
-      email = String(b.email || "").trim();
+    const b = native
+      ? Object.fromEntries(new URLSearchParams(text))
+      : JSON.parse(text || "{}");
+    if (!b || typeof b !== "object" || Array.isArray(b))
+      throw new HttpError("Dados inválidos.");
+    next = safeNext(typeof b.next === "string" ? b.next : "/account");
+    const email = String(b.email || "").trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
       throw new HttpError("Informe um e-mail válido.");
     if (
-      ["login", "register", "change-password"].includes(action) &&
-      (typeof b.password !== "string" ||
-        b.password.length < 8 ||
-        b.password.length > 200)
+      (action === "login" || action === "register" || action === "change-password") &&
+      !validPasswordLength(action, b.password)
     )
-      throw new HttpError("Use uma senha de 8 a 200 caracteres.");
+      throw new HttpError(
+        action === "login"
+          ? "AUTH_INVALID_CREDENTIALS"
+          : "Use uma senha de 8 a 200 caracteres.",
+      );
     if (action === "login") {
       await writeSession(
         await providerRequest("token?grant_type=password", {
@@ -50,7 +65,12 @@ export async function authHandler(request: Request, action: string) {
         }),
         secure,
       );
-      return Response.json({ ok: true });
+      return native
+        ? new Response(null, {
+            status: 303,
+            headers: { Location: next, "Cache-Control": "no-store" },
+          })
+        : Response.json({ ok: true });
     }
     if (action === "register") {
       const d = await providerRequest("signup", {
@@ -111,6 +131,18 @@ export async function authHandler(request: Request, action: string) {
     }
     throw new HttpError("Ação não encontrada.", 404);
   } catch (e: unknown) {
+    if (native) {
+      const code =
+        loginError(e instanceof HttpError ? e.message : "") || "AUTH_FAILED";
+      return new Response(null, {
+        status: 303,
+        headers: {
+          Location:
+            "/login?" + new URLSearchParams({ error: code, next }).toString(),
+          "Cache-Control": "no-store",
+        },
+      });
+    }
     if (action === "refresh" && e instanceof HttpError && e.status < 500)
       await clearSession();
     return Response.json(

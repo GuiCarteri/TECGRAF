@@ -1,6 +1,7 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
 import { useState, useEffect } from "react";
+import { loginError } from "@/lib/auth-input";
 import { safeNext } from "@/lib/auth-policy";
 import {
   InputOTP,
@@ -13,9 +14,13 @@ type AuthResult = { error?: string; verify?: boolean; message?: string };
 export function EmailForm({
   initial = "login",
   next = "/account",
+  initialError,
+  initialConfigured,
 }: {
   initial?: string;
   next?: string;
+  initialError?: string;
+  initialConfigured?: boolean;
 }) {
   const { translate, message: localizeMessage } = useI18n();
   const [mode, setMode] = useState<FormMode>(
@@ -26,13 +31,21 @@ export function EmailForm({
     [name, setName] = useState(""),
     [token, setToken] = useState(""),
     [verifyType, setVerifyType] = useState("signup"),
-    [error, setError] = useState(""),
+    [error, setError] = useState(
+      loginError(initialError) ||
+        (initialConfigured === false ? "AUTH_NOT_CONFIGURED" : ""),
+    ),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [configured, setConfigured] = useState<boolean | null>(
+    initialConfigured ?? null,
+  );
   useEffect(() => {
     fetch("/api/auth/config")
-      .then((r) => r.json() as Promise<{ configured: boolean }>)
+      .then(async (r) => {
+        if (!r.ok) throw new Error("AUTH_UNAVAILABLE");
+        return r.json() as Promise<{ configured: boolean }>;
+      })
       .then((d) => {
         setConfigured(d.configured);
         if (!d.configured) setError("AUTH_NOT_CONFIGURED");
@@ -92,7 +105,13 @@ export function EmailForm({
     }
   }
   return (
-    <form onSubmit={submit} className="stack">
+    <form
+      onSubmit={submit}
+      className="stack"
+      action="/api/auth/login"
+      method="post"
+    >
+      <input type="hidden" name="next" value={safeNext(next)} />
       <h1>
         {
           (
@@ -133,6 +152,7 @@ export function EmailForm({
         <input
           required
           type="email"
+          name="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
@@ -145,7 +165,8 @@ export function EmailForm({
           <input
             required
             type="password"
-            minLength={8}
+            name="password"
+            minLength={mode === "login" ? 1 : 8}
             maxLength={200}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -175,7 +196,10 @@ export function EmailForm({
           </InputOTP>
         </label>
       )}
-      <button className="button primary" disabled={busy || configured !== true}>
+      <button
+        className="button primary"
+        disabled={busy || configured === false}
+      >
         {busy
           ? translate("Aguarde…")
           : (

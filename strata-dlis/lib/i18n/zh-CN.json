@@ -507,5 +507,10 @@
   "Importar marcações JSON": "导入标注 JSON",
   "Arquivo incompatível": "不兼容文件",
   "Marcações manuais. Salve a análise ou exporte JSON para preservá-las.": "手动标注。保存分析或导出 JSON 以保留标注。",
-  "Remover": "删除"
+  "Remover": "删除",
+  "Apagar publicação": "删除发布",
+  "Apagando…": "正在删除…",
+  "Publicação apagada.": "发布已删除。",
+  "Exclusão pendente": "待删除",
+  "Apagar publicação permanentemente? O arquivo será removido. Análises e exportações serão preservadas.": "永久删除此发布？文件将被移除。分析和导出记录将被保留。"
 }

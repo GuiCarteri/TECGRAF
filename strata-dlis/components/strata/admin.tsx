@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { api, post } from "@/lib/api";
 import { Pick } from "./controls";
+import { DeletePublication } from "./delete-publication";
 export function Admin() {
   const { translate, message } = useI18n();
   const [files, setFiles] = useState<any[]>([]),
@@ -146,6 +147,7 @@ export function Admin() {
                                   review: translate("Revisão necessária"),
                                   validated: translate("Validado"),
                                   archived: translate("Arquivado"),
+                                  deleting: translate("Exclusão pendente"),
                                 } as any
                               )[f.status]
                             }
@@ -155,6 +157,7 @@ export function Admin() {
                         <TableCell>
                           <button
                             className="button compact"
+                            disabled={f.status === "deleting"}
                             onClick={() => {
                               setReview(f);
                               setCollection(f.collection);
@@ -164,6 +167,15 @@ export function Admin() {
                           >
                             {translate("Revisar")}
                           </button>
+                          <DeletePublication
+                            id={f.id}
+                            name={f.original_name}
+                            onDeleted={(id) =>
+                              setFiles((current) =>
+                                current.filter((file) => file.id !== id),
+                              )
+                            }
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -234,7 +246,7 @@ export function Admin() {
                 <div>
                   <dt>{translate("Empresas nos metadados")}</dt>
                   <dd>
-                    {review.metadata.logicalFiles
+                    {(review.metadata?.logicalFiles || [])
                       .map(
                         (lf: any) =>
                           lf.origin?.company || translate("Não informada"),

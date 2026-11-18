@@ -18,3 +18,15 @@ export function safeNext(value: string): string {
     return "/account";
   }
 }
+
+/** Existing accounts may have shorter legacy passwords; only new ones need 8+. */
+export function validPasswordLength(
+  action: "login" | "register" | "change-password",
+  password: unknown,
+): boolean {
+  return (
+    typeof password === "string" &&
+    password.length >= (action === "login" ? 1 : 8) &&
+    password.length <= 200
+  );
+}
