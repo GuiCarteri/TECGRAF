@@ -17,7 +17,11 @@ export function languageSwitchResponse(request: Request): Response {
   if (referer) {
     try {
       const previous = new URL(referer);
-      if (previous.origin === url.origin && previous.pathname !== "/api/locale") {
+      if (
+        previous.origin === url.origin &&
+        previous.pathname !== "/api/locale" &&
+        !previous.pathname.startsWith("//")
+      ) {
         destination = previous.pathname + previous.search;
       }
     } catch {

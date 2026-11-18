@@ -20,7 +20,9 @@ test("language switching works for all supported locales", () => {
     );
     assert.equal(response.status, 303);
     assert.equal(response.headers.get("location"), "/");
-    assert.ok(response.headers.get("set-cookie")?.includes(`strata_locale=${lang}`));
+    assert.ok(
+      response.headers.get("set-cookie")?.includes(`strata_locale=${lang}`),
+    );
     assert.doesNotMatch(response.headers.get("set-cookie") || "", /Secure/);
   }
 });
@@ -37,4 +39,13 @@ test("disallows unknown languages and external redirect destinations", () => {
     }),
   );
   assert.equal(safe.headers.get("location"), "/");
+});
+
+test("same-origin Referer cannot become a protocol-relative redirect", () => {
+  const response = languageSwitchResponse(
+    new Request("https://strata.example/api/locale?lang=en", {
+      headers: { referer: "https://strata.example//evil.test" },
+    }),
+  );
+  assert.equal(response.headers.get("location"), "/");
 });

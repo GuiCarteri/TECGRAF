@@ -7,7 +7,7 @@
   },
   "scripts": {
     "install:ci": "pnpm install --frozen-lockfile",
-    "dev": "vite --host 127.0.0.1",
+    "dev": "node scripts/dev.mjs",
     "build": "vite build",
     "start": "wrangler dev --config dist/server/wrangler.json --local --persist-to .wrangler/state",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
@@ -25,7 +25,10 @@
     "test:browser:real": "node tests/run-browser.mjs tests/real-browser.mjs",
     "test:python": "python3 -m unittest discover -s science -p test_science.py",
     "test:reference": "python3 scripts/verify-reference.py",
-    "test:browser:publications": "node tests/run-browser.mjs tests/publications-browser.mjs"
+    "test:browser:publications": "node tests/run-browser.mjs tests/publications-browser.mjs",
+    "setup:env": "node scripts/setup-env.mjs",
+    "test:ui-controls": "node tests/ui-controls.mjs",
+    "test:dev-startup": "node tests/dev-startup.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -68,6 +71,7 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.4.1",
+    "jsdom": "27.0.1",
     "playwright": "1.62.1",
     "prettier": "^3.9.7",
     "react-server-dom-webpack": "19.2.8",

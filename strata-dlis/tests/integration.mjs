@@ -58,7 +58,7 @@ async function provider(request) {
       return Response.json(session(user));
     }
     const user = users.get(body.email);
-    if (!user || body.password !== "test-password-123")
+    if (!user || !["test-password-123", "short1"].includes(body.password))
       return Response.json({ code: "invalid_credentials" }, { status: 400 });
     return Response.json(session(user));
   }
@@ -399,6 +399,30 @@ try {
   for (const invalid of [null, [], "text", 123])
     assert.equal((await call("analyses", "POST", invalid, "reader")).status, 400);
   console.log("PASS: publication deletion permissions, CSRF, R2 cleanup, history, preservation and retry; invalid JSON bodies");
+  const native = await mf.dispatchFetch("https://strata.test/api/auth/login", {
+    redirect: "manual",
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Origin: "https://strata.test" },
+    body: new URLSearchParams({ email: "reader@example.test", password: "short1", next: "/account?tab=files" }).toString(),
+  });
+  assert.equal(native.status,303);
+  assert.equal(native.headers.get("location"),"/account?tab=files");
+  const nativeCookies=native.headers.getSetCookie();
+  assert.ok(nativeCookies.some(c=>c.startsWith("strata_access=")&&c.includes("HttpOnly")&&c.includes("Secure")));
+  const nativeMe=await mf.dispatchFetch("https://strata.test/api/me",{headers:{Cookie:nativeCookies.map(c=>c.split(";")[0]).join("; ")}});
+  assert.equal((await nativeMe.json()).user.id,"supabase:reader");
+  const invalidNative=await mf.dispatchFetch("https://strata.test/api/auth/login",{
+    redirect: "manual",
+    method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded",Origin:"https://strata.test"},
+    body:new URLSearchParams({email:"reader@example.test",password:"wrong",next:"//evil.test"}).toString(),
+  });
+  assert.equal(invalidNative.status,303);
+  assert.equal(invalidNative.headers.get("location"),"/login?error=AUTH_INVALID_CREDENTIALS&next=%2Faccount");
+  assert.equal(invalidNative.headers.getSetCookie().length,0);
+  const crossOrigin=await mf.dispatchFetch("https://strata.test/api/auth/login",{
+    method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded",Origin:"https://evil.test"},body:"email=reader%40example.test&password=short1",
+  });
+  assert.equal(crossOrigin.status,403);
+  console.log("PASS: native login without JS, existing short password, session cookies, safe redirects and CSRF");
   const oldAccess = jars.get("reader").get("strata_access");
   tokens.delete(oldAccess);
   assert.equal(

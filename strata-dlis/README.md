@@ -19,19 +19,31 @@ O processamento do arquivo é client-side; biblioteca, autenticação, publicaç
 Requisitos: Node.js **22.18 ou superior** (validado com 24.22.1), pnpm **11.25.0** e Python 3 para os testes SQLite/migração. Não há requisito de conta em ferramenta de geração de código.
 
 ```bash
-corepack enable
-corepack prepare pnpm@11.25.0 --activate
 pnpm install --frozen-lockfile
-cp .env.example .dev.vars
-pnpm db:migrate:local
+pnpm setup:env
+# Preencha .dev.vars somente se ainda não estiver configurado.
 pnpm dev
 ```
 
-Abra o endereço local exibido pelo Vite, normalmente `http://127.0.0.1:5173`. No Windows sem `cp`, copie o arquivo pelo VS Code/Explorador. `.dev.vars` e o estado local `.wrangler/` são ignorados pelo Git.
+Abra o endereço local exibido pelo Vite, normalmente `http://127.0.0.1:5173`. `pnpm setup:env` funciona também no Windows e nunca sobrescreve `.dev.vars`. `.dev.vars` e o estado local `.wrangler/` são ignorados pelo Git.
 
 Preencha `.dev.vars` com o seu projeto Supabase antes de testar contas. Sem configuração, a biblioteca pública e o guia continuam acessíveis quando o D1 está inicializado; login informa a configuração ausente e as rotas privadas permanecem bloqueadas. **Não existe conta padrão ou login de demonstração.**
 
 O ID D1 zerado em `wrangler.json` serve apenas como placeholder local. `pnpm deploy` recusa esse ID. O Vite/Miniflare pode buscar informações auxiliares da Cloudflare; em um ambiente local sem essa conectividade, use `CLOUDFLARE_CF_FETCH_ENABLED=false`. Isso não substitui o provedor de autenticação nem altera permissões.
+
+## Codespaces: início manual
+
+Abrir o Codespace **não executa o site**. A configuração desativa restauração de terminais, tarefas automáticas e reabertura de portas antigas. Apenas a porta 5173 está configurada para encaminhamento; nenhum navegador é aberto automaticamente. A instalação de dependências em `postCreateCommand` não inicia o servidor.
+
+Depois de atualizar o código, aplique a configuração do container com **Codespaces: Rebuild Container** uma vez. Isso encerra os processos antigos. Alterar o repositório não encerra um servidor que já esteja rodando; enquanto não reconstruir, pare o terminal antigo com `Ctrl+C`.
+
+Para iniciar quando quiser: `cd strata-dlis` e `pnpm dev`. Para encerrar: `Ctrl+C`. Esse comando prepara apenas o D1 local e inicia o Vite na porta 5173; se ela estiver ocupada, retorna erro em vez de abrir 5174, 5175 etc. Mantenha a porta privada na aba **Ports**. No ambiente Codespaces, o endereço HTTPS do próprio Codespace é autorizado e usado pelo WebSocket.
+
+O container já instala pnpm; não é necessário executar `corepack enable` nele (isso pode causar EACCES). Fora do container, instale pnpm 11.25.0 pelo método permitido no seu computador.
+
+Idioma muda imediatamente quando o JavaScript está disponível. **Aplicar** não recarrega a página nesse caso, preservando arquivo local e formulários. Sem JavaScript, **Aplicar** usa o formulário nativo e recarrega o idioma no servidor. O login também aceita envio nativo; senhas de contas existentes são validadas pelo Supabase, e a exigência de oito caracteres permanece para cadastro e nova senha.
+
+Se aparecer **Autenticação indisponível**, preencha `SUPABASE_URL` e `SUPABASE_ANON_KEY` no `.dev.vars` do seu Codespace e reinicie `pnpm dev`. Não copie `.env.example` por cima de credenciais existentes e não envie chaves pelo chat.
 
 ## Variáveis do servidor
 

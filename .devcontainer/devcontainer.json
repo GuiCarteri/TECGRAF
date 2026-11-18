@@ -1,5 +1,5 @@
 {
-  "name": "STRATA \u2014 Node 24 / Python",
+  "name": "STRATA — Node 24 / Python",
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -10,7 +10,7 @@
   "portsAttributes": {
     "5173": {
       "label": "STRATA local",
-      "onAutoForward": "notify"
+      "onAutoForward": "silent"
     }
   },
   "postCreateCommand": "pnpm --dir strata-dlis install --frozen-lockfile",
@@ -22,7 +22,11 @@
         "ms-python.python"
       ],
       "settings": {
-        "typescript.tsdk": "strata-dlis/node_modules/typescript/lib"
+        "typescript.tsdk": "strata-dlis/node_modules/typescript/lib",
+        "terminal.integrated.enablePersistentSessions": false,
+        "task.allowAutomaticTasks": "off",
+        "remote.autoForwardPorts": false,
+        "remote.restoreForwardedPorts": false
       }
     }
   }

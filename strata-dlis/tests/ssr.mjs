@@ -39,7 +39,7 @@ try {
     });
     const html = await r.text();
     assert.equal(r.status, 200, html.slice(0, 300));
-    assert.ok(html.includes('lang="' + locale + '"'));
+    assert.ok(html.includes('lang="' + locale + '"'), html.slice(0, 1500) + '\n' + logs.slice(-2500));
     assert.ok(html.includes(label));
     console.log("PASS: initial SSR language " + locale);
   }

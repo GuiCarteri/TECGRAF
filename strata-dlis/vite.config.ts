@@ -1,6 +1,7 @@
 import vinext from "vinext";
 import { defineConfig, type Plugin } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { codespaceHost } from "./scripts/dev-config";
 import { rewriteVinextShimProxy } from "./scripts/vinext-shim-proxy";
 
 function fixVinextRscProxyImports(): Plugin {
@@ -19,7 +20,18 @@ function fixVinextRscProxyImports(): Plugin {
   };
 }
 
+const forwardedHost = codespaceHost(process.env);
 export default defineConfig({
+  server: {
+    host: "0.0.0.0",
+    port: 5173,
+    strictPort: true,
+    open: false,
+    allowedHosts: forwardedHost ? [forwardedHost] : [],
+    ws: forwardedHost
+      ? { protocol: "wss", host: forwardedHost, clientPort: 443 }
+      : undefined,
+  },
   plugins: [
     fixVinextRscProxyImports(),
     vinext(),

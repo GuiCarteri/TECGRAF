@@ -3,7 +3,13 @@ import { useI18n } from "@/lib/i18n/provider";
 import { EmailForm } from "@/components/auth/email-form";
 import { Shell } from "@/components/strata/shell";
 import { Layers3, Bookmark, ShieldCheck, History } from "lucide-react";
-export function LoginContent({ p }: { p: { next?: string; mode?: string } }) {
+export function LoginContent({
+  p,
+  configured,
+}: {
+  p: { next?: string; mode?: string; error?: string };
+  configured?: boolean;
+}) {
   const { translate } = useI18n();
   return (
     <Shell active="login">
@@ -37,6 +43,8 @@ export function LoginContent({ p }: { p: { next?: string; mode?: string } }) {
           <EmailForm
             initial={p.mode === "register" ? "register" : "login"}
             next={p.next || "/account"}
+            initialError={p.error}
+            initialConfigured={configured}
           />
         </div>
       </div>

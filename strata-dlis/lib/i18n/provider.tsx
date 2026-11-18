@@ -24,8 +24,12 @@ export function I18nProvider({
       locale,
       setLocale: (next: Locale) => {
         const selected = parseLocale(next);
-        document.cookie = `strata_locale=${selected}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
         update(selected);
+        try {
+          document.cookie = `strata_locale=${selected}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+        } catch {
+          // Restricted cookies must not disable translation in the current page.
+        }
       },
     }),
     [locale],

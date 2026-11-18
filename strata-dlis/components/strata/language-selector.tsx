@@ -16,12 +16,10 @@ export function LanguageSelector() {
       action="/api/locale"
       method="get"
       onSubmit={(event) => {
-        // When React is hydrated, the selection already updates translations.
-        // Without hydration, the native GET form still works.
         event.preventDefault();
-        const selected = event.currentTarget.elements.namedItem("lang");
-        if (selected instanceof HTMLSelectElement)
-          setLocale(parseLocale(selected.value));
+        setLocale(
+          parseLocale(String(new FormData(event.currentTarget).get("lang"))),
+        );
       }}
     >
       <label htmlFor={id} className="sr-only">

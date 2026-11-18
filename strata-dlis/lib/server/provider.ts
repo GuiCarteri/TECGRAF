@@ -1,3 +1,4 @@
+import { authConfig } from "../auth-input";
 import { env } from "cloudflare:workers";
 import { cookies } from "next/headers";
 import { HttpError } from "./errors";
@@ -23,11 +24,7 @@ export type ProviderResponse = {
 } & ProviderUser;
 const options = { httpOnly: true, sameSite: "lax" as const, path: "/" };
 export function providerConfigured() {
-  return (
-    /^https:\/\/[^/]+$/.test(
-      String(env.SUPABASE_URL || "").replace(/\/$/, ""),
-    ) && !!env.SUPABASE_ANON_KEY
-  );
+  return authConfig(env.SUPABASE_URL, env.SUPABASE_ANON_KEY).configured;
 }
 export async function providerRequest(
   path: string,
@@ -39,11 +36,13 @@ export async function providerRequest(
   let response: Response;
   try {
     response = await fetch(
-      String(env.SUPABASE_URL).replace(/\/$/, "") + "/auth/v1/" + path,
+      authConfig(env.SUPABASE_URL, env.SUPABASE_ANON_KEY).url +
+        "/auth/v1/" +
+        path,
       {
         method: method || (body ? "POST" : "GET"),
         headers: {
-          apikey: env.SUPABASE_ANON_KEY!,
+          apikey: authConfig(env.SUPABASE_URL, env.SUPABASE_ANON_KEY).key,
           "Content-Type": "application/json",
           ...(token ? { Authorization: "Bearer " + token } : {}),
         },
