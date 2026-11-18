@@ -31,7 +31,12 @@ test("CSV, JSON and XLSX retain raw values, identifiers, user text and canonical
       observation: "Texto original 中文",
       reference: { value: 2.5 },
     };
-  const original = JSON.stringify(point),
+  const formulaText = '=SUM(1,2) "nota", 中文';
+  const points = [
+    point,
+    { ...point, sampleIndex: 2, rawValue: -2000, observation: formulaText },
+  ];
+  const original = JSON.stringify(points),
     blobs = [];
   const oldCreate = URL.createObjectURL,
     oldRevoke = URL.revokeObjectURL,
@@ -44,20 +49,38 @@ test("CSV, JSON and XLSX retain raw values, identifiers, user text and canonical
   globalThis.document = { createElement: () => ({ click() {} }) };
   try {
     for (const format of ["csv", "json", "xlsx"])
-      await exportPoints([point], format, hash);
+      await exportPoints(points, format, hash);
     const csv = await blobs[0].text();
     assert.match(csv, /1\.125/);
     assert.match(csv, /原始.dlis/);
     assert.match(csv, /rawValue/);
     assert.match(csv, /Texto original 中文/);
-    assert.deepEqual(JSON.parse(await blobs[1].text()).points, [point]);
+    const csvBook = XLSX.read(csv, { type: "string", raw: true });
+    const csvRows = XLSX.utils.sheet_to_json(
+      csvBook.Sheets[csvBook.SheetNames[0]],
+    );
+    assert.equal(csvRows[1].observation, "'" + formulaText);
+    assert.equal(csvRows[1].rawValue, "-2000");
+    assert.equal(csvRows[1].fileHash, hash);
+    assert.deepEqual(JSON.parse(await blobs[1].text()).points, points);
     const workbook = XLSX.read(await blobs[2].arrayBuffer(), { type: "array" });
     const row = XLSX.utils.sheet_to_json(workbook.Sheets["Pontos brutos"])[0];
     assert.equal(row.rawValue, 1.125);
     assert.equal(row.channel, "Bom");
     assert.equal(row.manualClassification, "Bom");
     assert.equal(row.observation, point.observation);
-    assert.equal(JSON.stringify(point), original);
+    const sheet = workbook.Sheets["Pontos brutos"];
+    const headers = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0];
+    const observation =
+      sheet[
+        XLSX.utils.encode_cell({ r: 2, c: headers.indexOf("observation") })
+      ];
+    assert.equal(observation.t, "s");
+    assert.equal(observation.f, undefined);
+    assert.equal(observation.v, formulaText);
+    assert.equal(XLSX.utils.sheet_to_json(sheet)[1].rawValue, -2000);
+    assert.equal(workbook.Sheets["Rastreabilidade"].B2.v, hash);
+    assert.equal(JSON.stringify(points), original);
   } finally {
     URL.createObjectURL = oldCreate;
     URL.revokeObjectURL = oldRevoke;
