@@ -21,7 +21,7 @@ export function DeletePublication({
       pending.current ||
       !window.confirm(
         translate(
-          "Apagar publicação permanentemente? O arquivo será removido. Análises e exportações serão preservadas.",
+          "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.",
         ) +
           "\n\n" +
           name,

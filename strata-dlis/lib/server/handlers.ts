@@ -1,3 +1,4 @@
+import { modelHandler } from "./model-handlers";
 import { validateRegions } from "../dlis/regions";
 import { hasRefresh } from "./provider";
 import { authHandler } from "./auth-handlers";
@@ -48,6 +49,8 @@ export async function handle(request: Request, path: string[]) {
     const [route, id, action] = path,
       url = new URL(request.url);
     if (route === "auth") return authHandler(request, id);
+    const model = await modelHandler(request, path);
+    if (model !== undefined) return json(model);
     if (route === "me" && request.method === "GET") {
       const user = await currentUser();
       if (!user && (await hasRefresh()))

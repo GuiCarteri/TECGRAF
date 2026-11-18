@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "deploy": "node scripts/check-deploy.mjs && wrangler deploy --config dist/server/wrangler.json",
-    "test:database": "python3 tests/database.py && python3 tests/migration.py",
+    "test:database": "python3 tests/database.py && python3 tests/migration.py && python3 tests/model-database.py",
     "test:browser:serve": "vite --config tests/browser/vite.config.ts",
     "test:browser": "node tests/run-browser.mjs",
     "test:ssr": "node tests/ssr.mjs",

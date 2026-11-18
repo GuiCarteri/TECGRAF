@@ -7,10 +7,14 @@ def backup(collision=False):
  db.execute("INSERT INTO analyses VALUES('analysis','legacy-user','hash','x.dlis','Note','[{\"rawValue\":1.125}]','{}','now')")
  db.execute("INSERT INTO history VALUES('old-history','legacy-user','hash',NULL,'x.dlis','now')")
  if collision:db.execute("INSERT INTO history VALUES('new-history','supabase:new','hash',NULL,'x.dlis','now')")
+ db.execute("INSERT INTO wells(id,owner_id,name,created_at,updated_at) VALUES ('w','legacy-user','Well','now','now')")
+ db.execute("INSERT INTO reports(id,owner_id,source_hash,title,content,source_snapshot,created_at) VALUES ('r','legacy-user','hash','Report','{}','{}','now')")
  db.commit();return '\n'.join(db.iterdump())
 items=[dict(old_user_id='legacy-user',new_user_id='supabase:new',evidence_sha256='a'*64,approved_by='test-reviewer')]
 db, report=m.migrate(backup(),items)
 assert db.execute('SELECT owner_id FROM analyses').fetchone()[0]=='supabase:new'
+assert db.execute('SELECT owner_id FROM wells').fetchone()[0]=='supabase:new'
+assert db.execute('SELECT owner_id FROM reports').fetchone()[0]=='supabase:new'
 assert db.execute("SELECT role FROM users WHERE id='supabase:new'").fetchone()[0]=='user'
 assert db.execute("SELECT COUNT(*) FROM users").fetchone()[0]==2
 for source, mapping in [(backup(True),items),(backup(),[{**items[0],'evidence_sha256':''}])]:

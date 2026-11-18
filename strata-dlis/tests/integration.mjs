@@ -1,3 +1,4 @@
+import { testDataModel } from "./model-integration.mjs";
 // All identities and provider responses in this file are isolated test fixtures.
 // The application always validates sessions against the configured provider.
 import { createRequire } from "node:module";
@@ -423,6 +424,7 @@ try {
   });
   assert.equal(crossOrigin.status,403);
   console.log("PASS: native login without JS, existing short password, session cookies, safe redirects and CSRF");
+  await testDataModel({ call, db, storage });
   const oldAccess = jars.get("reader").get("strata_access");
   tokens.delete(oldAccess);
   assert.equal(

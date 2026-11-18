@@ -13,6 +13,11 @@ def migrate(backup, mappings):
     # These references include both ownership and moderation provenance.
     refs = [('files', 'owner_id'), ('files', 'reviewer_id'), ('analyses', 'owner_id'),
             ('history', 'owner_id'), ('exports_log', 'owner_id'), ('uploads', 'owner_id')]
+    # Optional additive data-model tables; old backups remain supported.
+    for table in ['wells', 'reports']:
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
+            required.append(table)
+            refs.append((table, 'owner_id'))
     before = {t: db.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0] for t in required}
     protected = {t: db.execute(f'SELECT id, points, settings, hash FROM {t} ORDER BY id').fetchall() for t in ['analyses']}
     seen_old, seen_new = set(), set()

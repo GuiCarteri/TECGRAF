@@ -1,0 +1,73 @@
+import assert from "node:assert/strict";
+export async function testDataModel({ call, db, storage }) {
+  const sourceHash = "d".repeat(64);
+  const metadata = { version: "V1.00", logicalFiles: [{ index: 0, id: "LF", frames: [{ key: "frame", name: "Frame", indexType: "BOREHOLE-DEPTH", channels: [{ key: "c1", name: "CBL", units: "mV", dimension: [1], kind: "CBL" },{ key: "c2", name: "CBL", units: "mV", dimension: [1], kind: "CBL" }] }] }] };
+  async function seed(id,hash,owner="reader",visibility="private") {
+    await db.prepare("INSERT INTO files (id,hash,owner_id,publisher,original_name,size,object_key,well,collection,metadata,status,visibility,authorization,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(id,hash,"supabase:"+owner,owner,"synthetic.dlis",84,"dlis/"+id,"Same name","Synthetic",JSON.stringify(metadata),"validated",visibility,1,"2026-01-01").run();
+    await storage.put("dlis/"+id,new Uint8Array(84));
+  }
+  await seed("model-a",sourceHash);
+  await seed("model-b","e".repeat(64));
+  await seed("model-other","f".repeat(64),"other");
+  assert.equal((await call("files/model-a/model")).status,401);
+  assert.equal((await call("files/model-a/model","GET",undefined,"other")).status,404);
+  const model=await call("files/model-a/model","GET",undefined,"reader");
+  assert.equal(model.status,200);
+  assert.equal(model.data.sourceHash,sourceHash);
+  assert.equal(model.data.wellId,"publication:model-a");
+  const curves=model.data.logicalFiles[0].frames[0].curves;
+  assert.equal(curves.length,2);
+  assert.notEqual(curves[0].id,curves[1].id);
+  assert.equal(curves[0].units,"mV");
+  await db.prepare("UPDATE files SET visibility='public' WHERE id='model-b'").run();
+  assert.equal((await call("files/model-b/model","GET",undefined,"other")).status,200);
+  assert.equal((await call("wells/publication:model-b","GET",undefined,"other")).status,404);
+  const well=await call("wells","POST",{name:"Canonical well",identifier:"explicit-01"},"reader");
+  assert.equal(well.status,200);
+  assert.equal((await call("wells","POST",{name:"Injected",ownerId:"supabase:other"},"reader")).status,400);
+  assert.equal((await call("wells/"+well.data.id,"GET",undefined,"other")).status,404);
+  assert.equal((await call("files/model-a/well","PUT",{wellId:well.data.id},"other")).status,404);
+  assert.equal((await call("files/model-other/well","PUT",{wellId:well.data.id},"admin")).status,404);
+  assert.equal((await call("files/model-a/well","PUT",{wellId:well.data.id},"reader",{Origin:"https://evil.test"})).status,403);
+  for(const id of ["model-a","model-b"])
+    assert.equal((await call("files/"+id+"/well","PUT",{wellId:well.data.id},"reader")).status,200);
+  assert.equal((await call("wells/"+well.data.id,"GET",undefined,"reader")).data.files.length,2);
+  assert.equal((await db.prepare("SELECT well FROM files WHERE id='model-a'").first()).well,"Same name");
+  assert.deepEqual(JSON.parse((await db.prepare("SELECT metadata FROM files WHERE id='model-a'").first()).metadata),metadata);
+  const analysis=await call("analyses","POST",{hash:sourceHash,fileName:"synthetic.dlis",name:"Interpretation",points:[{fileHash:sourceHash,channel:"CBL",sampleIndex:0,componentIndex:0,rawValue:1.125}],settings:{regions:[]}},"reader");
+  assert.equal(analysis.status,200);
+  const interpretation=await call("interpretations/"+analysis.data.id,"GET",undefined,"reader");
+  assert.equal(interpretation.data.interpretations[0].well_id,well.data.id);
+  assert.equal(interpretation.data.interpretations[0].points[0].rawValue,1.125);
+  assert.equal((await call("interpretations/"+analysis.data.id,"GET",undefined,"other")).status,404);
+  const input={title:"Manual report",fileId:"model-a",analysisId:analysis.data.id,content:{summary:"Observation",sections:[]}};
+  assert.equal((await call("reports","POST",{...input,fileId:"model-b"},"reader")).status,400);
+  assert.equal((await call("reports","POST",input,"other")).status,404);
+  const report=await call("reports","POST",input,"reader");
+  assert.equal(report.status,200,JSON.stringify(report.data));
+  const getReport=()=>call("reports/"+report.data.id,"GET",undefined,"reader");
+  const original=(await getReport()).data.report;
+  assert.equal(original.source_hash,sourceHash);
+  assert.equal(original.source_snapshot.interpretation.points[0].rawValue,1.125);
+  assert.equal((await call("reports/"+report.data.id,"GET",undefined,"admin")).status,404);
+  assert.equal((await call("reports/"+report.data.id,"DELETE",undefined,"other")).status,404);
+  assert.equal((await call("reports","GET",undefined,"other")).data.reports.length,0);
+  assert.equal((await call("reports/"+report.data.id,"PUT",input,"reader")).status,405);
+  await call("analyses","POST",{id:analysis.data.id,hash:sourceHash,fileName:"synthetic.dlis",name:"Changed",points:[],settings:{}},"reader");
+  assert.deepEqual((await getReport()).data.report.source_snapshot,original.source_snapshot);
+  assert.equal((await call("files/model-a","DELETE",undefined,"reader")).status,200);
+  const detached=(await getReport()).data.report;
+  assert.equal(detached.file_id,null);
+  assert.deepEqual(detached.source_snapshot,original.source_snapshot);
+  assert.equal((await call("interpretations/"+analysis.data.id,"GET",undefined,"reader")).data.interpretations[0].file_id,null);
+  const localReport=await call("reports","POST",{...input,fileId:undefined},"reader");
+  assert.equal(localReport.status,200);
+  await call("analyses/"+analysis.data.id,"DELETE",undefined,"reader");
+  assert.equal((await getReport()).data.report.analysis_id,null);
+  assert.deepEqual((await getReport()).data.report.source_snapshot,original.source_snapshot);
+  assert.equal((await call("reports/"+report.data.id,"DELETE",undefined,"reader")).status,200);
+  assert.equal((await getReport()).status,404);
+  await call("reports/"+localReport.data.id,"DELETE",undefined,"reader");
+  console.log("PASS: data model API, explicit well grouping, private interpretations/reports, immutable snapshots, source deletion and ownership/CSRF");
+}
