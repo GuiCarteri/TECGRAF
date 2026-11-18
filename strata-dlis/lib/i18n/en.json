@@ -512,5 +512,5 @@
   "Apagando…": "Deleting…",
   "Publicação apagada.": "Publication deleted.",
   "Exclusão pendente": "Deletion pending",
-  "Apagar publicação permanentemente? O arquivo será removido. Análises e exportações serão preservadas.": "Permanently delete this publication? The file will be removed. Analyses and exports will be preserved."
+  "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.": "Permanently delete this publication? The file will be removed. Analyses, reports and exports will be preserved."
 }

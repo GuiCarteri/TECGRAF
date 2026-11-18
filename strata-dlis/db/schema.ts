@@ -94,3 +94,61 @@ export const exportsLog = sqliteTable(
   },
   (t) => [index("exports_owner_idx").on(t.ownerId)],
 );
+
+// Canonical wells are explicitly linked; equal names never imply identity.
+export const wells = sqliteTable(
+  "wells",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    name: text("name"),
+    field: text("field"),
+    company: text("company"),
+    identifier: text("identifier"),
+    origin: text("origin").notNull().default("manual"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [index("wells_owner_idx").on(t.ownerId)],
+);
+
+export const fileWells = sqliteTable(
+  "file_wells",
+  {
+    fileId: text("file_id")
+      .primaryKey()
+      .references(() => files.id, { onDelete: "cascade" }),
+    wellId: text("well_id")
+      .notNull()
+      .references(() => wells.id, { onDelete: "restrict" }),
+  },
+  (t) => [index("file_wells_well_idx").on(t.wellId)],
+);
+
+// Reports are immutable snapshots, independent of subsequent interpretation edits.
+export const reports = sqliteTable(
+  "reports",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull(),
+    fileId: text("file_id").references(() => files.id, {
+      onDelete: "set null",
+    }),
+    wellId: text("well_id").references(() => wells.id, {
+      onDelete: "set null",
+    }),
+    analysisId: text("analysis_id").references(() => analyses.id, {
+      onDelete: "set null",
+    }),
+    sourceHash: text("source_hash").notNull(),
+    title: text("title").notNull(),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    content: text("content").notNull(),
+    sourceSnapshot: text("source_snapshot").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    index("reports_owner_created_idx").on(t.ownerId, t.createdAt),
+    index("reports_source_hash_idx").on(t.sourceHash),
+  ],
+);

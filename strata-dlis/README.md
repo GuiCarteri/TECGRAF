@@ -77,11 +77,15 @@ Identidades antigas não são associadas por e-mail. Veja [docs/MIGRACAO_IDENTID
 
 ## Apagar publicações
 
-Em **Minha conta → Publicações**, o autor pode apagar sua publicação. Administradores também podem apagar pela lista de arquivos da administração. A confirmação informa que a exclusão é permanente: os bytes são removidos do R2 e a publicação do catálogo. Análises, pontos e registros de exportação permanecem; links do histórico são desvinculados.
+Em **Minha conta → Publicações**, o autor pode apagar sua publicação. Administradores também podem apagar pela lista de arquivos da administração. A confirmação informa que a exclusão é permanente: os bytes são removidos do R2 e a publicação do catálogo. Análises, pontos, relatórios e registros de exportação permanecem; links do histórico são desvinculados.
 
 Uma exclusão interrompida fica como **Exclusão pendente**, bloqueada para download e aprovação. Clique novamente em **Apagar publicação** para concluir. A aplicação não pode revogar cópias já baixadas. Não é necessário alterar o esquema do banco.
 
 Validação desta etapa: [docs/CODE_VALIDATION.md](docs/CODE_VALIDATION.md).
+
+## Modelo de dados
+
+A Etapa 2 adiciona poços e vínculos explícitos com arquivos, uma projeção tipada de curvas e relatórios privados com cópia da interpretação de origem. Análises e metadados existentes continuam sendo as fontes oficiais. As novas APIs e a migração `0001_data_model.sql` estão descritas em [docs/DATA_MODEL.md](docs/DATA_MODEL.md). A integração dessas informações às telas será realizada nas etapas seguintes.
 
 ## Banco e armazenamento
 
