@@ -145,7 +145,7 @@ export function EmailForm({
           <input
             required
             type="password"
-            minLength={8}
+            minLength={mode === "login" ? 1 : 8}
             maxLength={200}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
