@@ -1,4 +1,10 @@
 {
+  "Completude das amostras": "Sample completeness",
+  "Cobertura do intervalo observado": "Coverage of observed depth interval",
+  "Consistência da direção da profundidade": "Depth direction consistency",
+  "Unidades da curva e da profundidade": "Curve and depth units",
+  "Plausibilidade da amplitude ou impedância": "Amplitude or impedance plausibility",
+  "Rastreabilidade da origem": "Source traceability",
   "GUIA TÉCNICO": "TECHNICAL GUIDE",
   "Do arquivo à amostra.": "From file to sample.",
   "Uma biblioteca com origem identificada": "A library with traceable sources",
