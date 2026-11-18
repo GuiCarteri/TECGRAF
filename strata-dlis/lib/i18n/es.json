@@ -1,4 +1,11 @@
 {
+  "Painel de dados": "Panel de datos",
+  "Volume dos arquivos": "Tamaño total de archivos",
+  "Arquivos por tipo de perfil": "Archivos por tipo de perfil",
+  "Arquivos por ambiente": "Archivos por ambiente",
+  "Cinco coleções com mais arquivos": "Cinco colecciones con más archivos",
+  "Cinco maiores arquivos": "Cinco archivos más grandes",
+  "Os percentuais usam os arquivos filtrados. Um arquivo pode conter mais de um tipo de perfil.": "Los porcentajes se calculan sobre los archivos filtrados. Un archivo puede contener varios tipos de perfil.",
   "Prontidão dos dados": "Preparación de los datos",
   "O menor critério define o IPD. CBL e VDL exigem profundidades comparáveis e o índice considera a cobertura comum.": "El criterio más bajo determina el índice. CBL y VDL requieren profundidades comparables y el índice considera la cobertura común.",
   "Completude das amostras": "Completitud de las muestras",

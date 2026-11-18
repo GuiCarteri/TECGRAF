@@ -1870,3 +1870,19 @@ html[lang="zh-CN"] body { font-family: Inter, "Noto Sans SC", "Microsoft YaHei",
   .language-selector { gap: 4px; }
   .language-selector .language-apply { padding: 6px; font-size: 11px; }
 }
+
+.analytics-toggle[aria-pressed="true"] { background: var(--accent); color: var(--accent-foreground); }
+.analytics-panels, .analytics-stats { display: grid; gap: 1rem; }
+.analytics-panels { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.analytics-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); margin: 0 0 1rem; }
+.analytics-card, .analytics-stats > div { background: var(--card); color: var(--card-foreground); border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; min-width: 0; }
+.analytics-stats dd { margin: 0; font-weight: 700; font-size: 1.35rem; }
+.analytics-card ul { list-style: none; padding: 0; }
+.analytics-card ol { list-style: decimal; padding-inline-start: 1.5rem; }
+.analytics-card li { margin-block: .65rem; }
+.analytics-label { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; overflow-wrap: anywhere; }
+.analytics-label strong { white-space: nowrap; }
+.analytics-label a { text-decoration: underline; }
+.analytics-rail { background: var(--accent); height: .4rem; margin-top: .25rem; border-radius: .2rem; overflow: hidden; }
+.analytics-rail span { display: block; height: 100%; background: var(--accent-foreground); }
+.catalog-analytics > p { margin-top: 1rem; }

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { api, formatBytes } from "@/lib/api";
 import { readCatalogFiles, type CatalogFile } from "@/lib/catalog";
+import { CatalogDashboard } from "./catalog-dashboard";
 import { Pick } from "./controls";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -35,6 +36,7 @@ export function Library() {
     [source, setSource] = useState(""),
     [location, setLocation] = useState(""),
     [type, setType] = useState(""),
+    [dashboard, setDashboard] = useState(false),
     [view, setView] = useState("grid");
   const load = () => {
     setLoading(true);
@@ -200,18 +202,32 @@ export function Library() {
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
+            <button
+              type="button"
+              className="button analytics-toggle"
+              aria-pressed={dashboard}
+              onClick={() => setDashboard(!dashboard)}
+            >
+              {translate("Painel de dados")}
+            </button>
             <div className="view-buttons">
               <button
                 aria-label={translate("Exibir em cards")}
-                aria-pressed={view === "grid"}
-                onClick={() => setView("grid")}
+                aria-pressed={!dashboard && view === "grid"}
+                onClick={() => {
+                  setDashboard(false);
+                  setView("grid");
+                }}
               >
                 <Grid2X2 size={18} />
               </button>
               <button
                 aria-label={translate("Exibir em lista")}
-                aria-pressed={view === "list"}
-                onClick={() => setView("list")}
+                aria-pressed={!dashboard && view === "list"}
+                onClick={() => {
+                  setDashboard(false);
+                  setView("list");
+                }}
               >
                 <List size={19} />
               </button>
@@ -279,6 +295,8 @@ export function Library() {
                 {translate("Publicação sujeita a validação e autorização.")}
               </div>
             </Empty>
+          ) : dashboard ? (
+            <CatalogDashboard files={filtered} />
           ) : (
             sources
               .filter((s) => filtered.some((f) => f.collection === s))

@@ -110,6 +110,56 @@ try {
   });
   await language("en");
   assert.equal(window.location.href, "https://strata.test/login");
+  window.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      files: [
+        {
+          id: "a",
+          collection: "Volve",
+          size: 1024,
+          types: ["CBL"],
+          original_name: "alpha.dlis",
+        },
+        {
+          id: "b",
+          collection: "ANP",
+          size: 2048,
+          types: ["USIT"],
+          original_name: "beta.dlis",
+        },
+      ],
+    }),
+  });
+  await window.strataTest.mountLibrary();
+  await act(async () => doc.querySelector(".analytics-toggle").click());
+  const dashboard = () => doc.querySelector(".catalog-analytics");
+  assert.equal(dashboard().querySelector("dd").textContent, "2");
+  const search = doc.querySelector(".searchbox input");
+  async function filter(text) {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      ).set.call(search, text);
+      search.dispatchEvent(new window.Event("input", { bubbles: true }));
+    });
+  }
+  await filter("Volve");
+  assert.equal(dashboard().querySelector("dd").textContent, "1");
+  assert.equal(
+    dashboard().querySelector("a").getAttribute("href"),
+    "/viewer?file=a",
+  );
+  await filter("missing");
+  assert.equal(dashboard(), null);
+  await act(async () =>
+    doc.querySelector(".catalog-empty button").click(),
+  );
+  assert.equal(dashboard().querySelector("dd").textContent, "2");
+  console.log(
+    "PASS: dashboard toggle, charts and rankings follow search, empty state and filter reset",
+  );
   window.strataTest.unmount();
   console.log(
     "PASS: React language changes, Apply without reload, preserved inputs, login submission/errors and blocked-cookie handling (DOM emulation)",
