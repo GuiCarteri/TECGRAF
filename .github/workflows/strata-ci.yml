@@ -1,0 +1,66 @@
+name: STRATA CI
+
+on:
+  push:
+    paths:
+      - 'strata-dlis/**'
+      - 'package.json'
+      - '.devcontainer/**'
+      - '.github/workflows/strata-ci.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_CF_FETCH_ENABLED: 'false'
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked dependencies
+        run: npm run setup
+      - name: Check local runtime
+        run: npm run doctor
+      - name: Lint and check types
+        run: |
+          npm run lint
+          npm run typecheck
+      - name: Run unit, database and UI tests
+        working-directory: strata-dlis
+        run: |
+          npm test
+          npm run test:database
+          npm run test:ui-controls
+          python -m pip install -r science/requirements.txt
+          npm run test:python
+      - name: Build application
+        run: npm run build
+      - name: Check the worker, migrations and routes
+        working-directory: strata-dlis
+        run: |
+          npm run test:integration
+          npm run test:dev-startup
+          npm run test:ssr
+          npm run test:seed
+      - name: Run browser regressions
+        working-directory: strata-dlis
+        run: |
+          if command -v google-chrome >/dev/null; then
+            export PLAYWRIGHT_EXECUTABLE_PATH="$(command -v google-chrome)"
+          else
+            ./node_modules/.bin/playwright install --with-deps chromium --only-shell
+          fi
+          npm run test:browser
+          npm run test:browser:scientific
+          npm run test:browser:publications

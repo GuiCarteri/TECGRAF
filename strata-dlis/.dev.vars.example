@@ -1,6 +1,6 @@
-# Server-only environment; copy to .dev.vars for local Workers development.
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+# Catálogo público, D1 e R2 locais funcionam com os valores vazios.
+# Para testar contas, use a URL HTTPS e a chave pública do seu projeto Supabase.
+SUPABASE_URL=
 SUPABASE_ANON_KEY=
-# Optional one-time administrator bootstrap: confirmed Supabase UUIDs, never email addresses.
-# Remove after assigning the initial administrator in D1.
+# Opcional. UUIDs confirmados para cadastrar os primeiros administradores.
 ADMIN_USER_IDS=

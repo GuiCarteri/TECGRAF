@@ -236,8 +236,10 @@ export function Library() {
           <div className="results-heading">
             <h2>{source || translate("Todas as coleções")}</h2>
             <span>
-              {filtered.length}
-              {translate("arquivo")}
+              {translate(
+                filtered.length === 1 ? "{count} arquivo" : "{count} arquivos",
+                { count: filtered.length },
+              )}
             </span>
           </div>
           {loading ? (

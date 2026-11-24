@@ -1,27 +1,32 @@
 import { DLISFile } from "../lib/vendor/dlis-parser/index.js";
 import { validateHeader, extractMetadata, sha256 } from "../lib/dlis/core.js";
-let dlis: any = null;
+import type { DecodedFrame } from "../lib/dlis/types";
+let dlis: DLISFile | null = null;
 self.onmessage = async ({ data }) => {
   const { id, type, buffer, logicalFileIndex, frameKey, channels } = data;
   try {
     if (type === "parse") {
       dlis = null;
-      (self as any).postMessage({
+      self.postMessage({
         id,
         progress: "Verificando integridade do arquivo…",
       });
       validateHeader(buffer);
       const hash = await sha256(buffer);
-      (self as any).postMessage({
+      self.postMessage({
         id,
         progress: "Lendo estrutura e metadados do DLIS…",
       });
       dlis = DLISFile.fromBuffer(buffer);
-      if (!dlis.logicalFiles.some((lf: any) => lf.frames.size))
+      if (
+        !dlis.logicalFiles.some(
+          (lf: { frames: Map<string, unknown> }) => lf.frames.size,
+        )
+      )
         throw new Error(
           "Nenhum frame com metadados reconhecidos. O arquivo pode usar uma extensão não suportada.",
         );
-      (self as any).postMessage({
+      self.postMessage({
         id,
         result: { ...extractMetadata(dlis), hash },
       });
@@ -33,11 +38,11 @@ self.onmessage = async ({ data }) => {
         throw new Error(
           "Frame contém canais sem metadados completos. Decodificação bloqueada.",
         );
-      (self as any).postMessage({
+      self.postMessage({
         id,
         progress: "Decodificando canais selecionados…",
       });
-      const result = frame.decode({ channels });
+      const result: DecodedFrame | null = frame.decode({ channels });
       if (!result?.frameCount)
         throw new Error(
           "Frame não pôde ser decodificado ou não contém amostras.",
@@ -51,15 +56,20 @@ self.onmessage = async ({ data }) => {
           throw new Error("Channel possui dimensão incompatível.");
       }
 
-      (self as any).postMessage({ id, result }, [
-        ...Object.values(result.data).map((a: any) => a.buffer),
-        result.frameNumbers.buffer,
-      ]);
+      self.postMessage(
+        { id, result },
+        {
+          transfer: [
+            ...Object.values(result.data).map((array) => array.buffer),
+            result.frameNumbers.buffer,
+          ],
+        },
+      );
     }
-  } catch (e: any) {
-    (self as any).postMessage({
+  } catch (e) {
+    self.postMessage({
       id,
-      error: e.message || "Falha na leitura do DLIS.",
+      error: e instanceof Error ? e.message : "Falha na leitura do DLIS.",
     });
   }
 };

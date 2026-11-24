@@ -1,3 +1,4 @@
+import type { UserProfile } from "../api-types";
 import { env } from "cloudflare:workers";
 import { providerUser } from "./provider";
 import { HttpError } from "./errors";
@@ -21,7 +22,7 @@ export async function currentUser() {
   return await query(
     "SELECT * FROM users WHERE id=?",
     identity.userId,
-  ).first<any>();
+  ).first<UserProfile>();
 }
 export async function requireUser(roles?: string[]) {
   const user = await currentUser();

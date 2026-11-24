@@ -10,16 +10,17 @@ import {
   isMRayl,
   PALETTE,
 } from "./core.js";
+import type { ChannelMetadata, FrameMetadata, DecodedFrame } from "./types";
 export type Track = {
   id: string;
   kind: string;
   lf: number;
-  frame: any;
-  channel: any;
-  result: any;
+  frame: FrameMetadata;
+  channel: ChannelMetadata;
+  result: DecodedFrame;
   depthName: string;
   depth: Float64Array;
-  index: any;
+  index: ReturnType<typeof depthIndex>;
   stride: number;
   range: number[];
   rawRange: number[];
@@ -30,13 +31,13 @@ export function makeTrack(
   id: string,
   kind: string,
   lf: number,
-  frame: any,
-  channel: any,
-  result: any,
+  frame: FrameMetadata,
+  channel: ChannelMetadata,
+  result: DecodedFrame,
   depthName: string,
 ): Track {
   const factor = metersFactor(
-    frame.channels.find((c: any) => c.name === depthName)?.units,
+    frame.channels.find((c) => c.name === depthName)?.units,
   );
   if (factor === null || result.strides[depthName] !== 1)
     throw new Error(

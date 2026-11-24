@@ -1,4 +1,5 @@
-// Runs only when explicitly invoked with pnpm dev. Never writes credentials.
+// O servidor inicia apenas quando o usuário executa o comando de desenvolvimento.
+import { setupEnvironment } from "./setup-env.mjs";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -11,10 +12,10 @@ for (const signal of ["SIGINT", "SIGTERM"])
     stopping = true;
     child?.kill(signal);
   });
-async function run(args) {
+async function run(args, interactive = false) {
   child = spawn(process.execPath, args, {
     cwd: root,
-    stdio: "inherit",
+    stdio: [interactive ? "inherit" : "ignore", "inherit", "inherit"],
     env: {
       ...process.env,
       CLOUDFLARE_CF_FETCH_ENABLED:
@@ -27,6 +28,7 @@ async function run(args) {
   });
 }
 try {
+  await setupEnvironment(root);
   console.log(
     "STRATA: preparando somente o banco local. Credenciais existentes serão preservadas.",
   );
@@ -40,12 +42,15 @@ try {
   ]);
   if (code || stopping) process.exitCode = code || 130;
   else
-    process.exitCode = await run([
-      fileURLToPath(
-        new URL("../node_modules/vite/bin/vite.js", import.meta.url),
-      ),
-      ...process.argv.slice(2),
-    ]);
+    process.exitCode = await run(
+      [
+        fileURLToPath(
+          new URL("../node_modules/vite/bin/vite.js", import.meta.url),
+        ),
+        ...process.argv.slice(2),
+      ],
+      true,
+    );
 } catch (error) {
   console.error(
     error instanceof Error ? error.message : "Falha ao iniciar STRATA.",

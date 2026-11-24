@@ -1,11 +1,16 @@
 import DlisWorker from "../../workers/dlis.worker.ts?worker";
+import type { DecodedFrame, DlisMetadata } from "./types";
+
+type WorkerReply = DlisMetadata | DecodedFrame;
+
 export class DlisClient {
-  worker: Worker;
-  seq = 0;
-  pending = new Map<
+  private worker: Worker;
+  private seq = 0;
+  private pending = new Map<
     number,
-    { resolve: (d: any) => void; reject: (e: Error) => void }
+    { resolve: (value: WorkerReply) => void; reject: (error: Error) => void }
   >();
+
   constructor(onProgress?: (phase: string) => void) {
     this.worker = new DlisWorker();
     this.worker.onmessage = ({ data }) => {
@@ -13,39 +18,61 @@ export class DlisClient {
         onProgress?.(data.progress);
         return;
       }
-      const p = this.pending.get(data.id);
-      if (!p) return;
+      const request = this.pending.get(data.id);
+      if (!request) return;
       this.pending.delete(data.id);
-      data.error ? p.reject(new Error(data.error)) : p.resolve(data.result);
+      if (data.error) request.reject(new Error(data.error));
+      else request.resolve(data.result);
     };
-    this.worker.onerror = () => {
-      for (const p of this.pending.values())
-        p.reject(
-          new Error(
-            "A leitura foi interrompida. Tente um arquivo menor ou outro navegador.",
-          ),
-        );
-      this.pending.clear();
-    };
+    this.worker.onerror = () =>
+      this.rejectPending(
+        "A leitura foi interrompida. Tente um arquivo menor ou outro navegador.",
+      );
   }
-  request(type: string, data: any = {}, transfer: Transferable[] = []) {
-    return new Promise<any>((resolve, reject) => {
+
+  private rejectPending(message: string) {
+    for (const request of this.pending.values())
+      request.reject(new Error(message));
+    this.pending.clear();
+  }
+
+  private request(
+    type: "parse",
+    data: { buffer: ArrayBuffer },
+    transfer: Transferable[],
+  ): Promise<DlisMetadata>;
+  private request(
+    type: "decode",
+    data: { logicalFileIndex: number; frameKey: string; channels?: string[] },
+  ): Promise<DecodedFrame>;
+  private request(
+    type: string,
+    data: object,
+    transfer: Transferable[] = [],
+  ): Promise<WorkerReply> {
+    return new Promise((resolve, reject) => {
       const id = ++this.seq;
       this.pending.set(id, { resolve, reject });
-      this.worker.postMessage({ id, type, ...data }, transfer);
+      try {
+        this.worker.postMessage({ id, type, ...data }, transfer);
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
+
   async parse(file: File) {
     const buffer = await file.arrayBuffer();
     return this.request("parse", { buffer }, [buffer]);
   }
+
   decode(logicalFileIndex: number, frameKey: string, channels?: string[]) {
     return this.request("decode", { logicalFileIndex, frameKey, channels });
   }
+
   destroy() {
     this.worker.terminate();
-    for (const p of this.pending.values())
-      p.reject(new Error("Arquivo fechado."));
-    this.pending.clear();
+    this.rejectPending("Arquivo fechado.");
   }
 }

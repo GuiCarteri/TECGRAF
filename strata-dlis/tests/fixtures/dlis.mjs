@@ -68,7 +68,7 @@ export function record(body, attr = 0x80, type = 0) {
   );
   return cat(u16(segment.length + 4), [255, 1], segment);
 }
-export function makeFixture({ rows = 1201, encrypted = false } = {}) {
+export function makeFixture({ rows = 1201, encrypted = false, wellName = "Synthetic QA well" } = {}) {
   const channels = [
     ["TDEP", "m", 1],
     ["DEPTH", "m", 1],
@@ -90,7 +90,7 @@ export function makeFixture({ rows = 1201, encrypted = false } = {}) {
           ["WELL-NAME", 20],
           ["COMPANY", 20],
         ],
-        [["O", ["Synthetic QA well", "Test only"]]],
+        [["O", [wellName, "Test only"]]],
       ),
       0x80,
       1,

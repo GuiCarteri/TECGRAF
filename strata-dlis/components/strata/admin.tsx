@@ -20,22 +20,26 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
+import type { PublicationFile, UserProfile } from "@/lib/api-types";
 import { api, post } from "@/lib/api";
 import { Pick } from "./controls";
 import { DeletePublication } from "./delete-publication";
 export function Admin() {
   const { translate, message } = useI18n();
-  const [files, setFiles] = useState<any[]>([]),
-    [users, setUsers] = useState<any[]>([]),
+  const [files, setFiles] = useState<PublicationFile[]>([]),
+    [users, setUsers] = useState<UserProfile[]>([]),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true),
-    [review, setReview] = useState<any>(null),
+    [review, setReview] = useState<PublicationFile | null>(null),
     [note, setNote] = useState(""),
     [collection, setCollection] = useState(""),
     [checked, setChecked] = useState(false),
     [saving, setSaving] = useState(false);
   const load = () =>
-    Promise.all([api("admin/files"), api("admin/users")])
+    Promise.all([
+      api<{ files: PublicationFile[] }>("admin/files"),
+      api<{ users: UserProfile[] }>("admin/users"),
+    ])
       .then(([f, u]) => {
         setFiles(f.files);
         setUsers(u.users);
@@ -50,11 +54,13 @@ export function Admin() {
       await post("admin/users", { id, role });
       await load();
       toast.success(translate("Permissão atualizada."));
-    } catch (e: any) {
-      toast.error(message(e.message));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      toast.error(message(reason));
     }
   }
   async function decide(status: string) {
+    if (!review) return;
     setSaving(true);
     try {
       await post("admin/files", {
@@ -67,8 +73,9 @@ export function Admin() {
       await load();
       setReview(null);
       toast.success(translate("Revisão registrada."));
-    } catch (e: any) {
-      toast.error(message(e.message));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      toast.error(message(reason));
     } finally {
       setSaving(false);
     }
@@ -141,15 +148,13 @@ export function Admin() {
                         <TableCell>
                           <span className="badge">
                             {
-                              (
-                                {
-                                  pending: translate("Pendente"),
-                                  review: translate("Revisão necessária"),
-                                  validated: translate("Validado"),
-                                  archived: translate("Arquivado"),
-                                  deleting: translate("Exclusão pendente"),
-                                } as any
-                              )[f.status]
+                              {
+                                pending: translate("Pendente"),
+                                review: translate("Revisão necessária"),
+                                validated: translate("Validado"),
+                                archived: translate("Arquivado"),
+                                deleting: translate("Exclusão pendente"),
+                              }[f.status]
                             }
                           </span>
                         </TableCell>
@@ -248,7 +253,7 @@ export function Admin() {
                   <dd>
                     {(review.metadata?.logicalFiles || [])
                       .map(
-                        (lf: any) =>
+                        (lf) =>
                           lf.origin?.company || translate("Não informada"),
                       )
                       .join(" / ")}
@@ -264,7 +269,11 @@ export function Admin() {
                 </div>
                 <div>
                   <dt>{translate("Visibilidade")}</dt>
-                  <dd>{message(review.visibility)}</dd>
+                  <dd>
+                    {review.visibility
+                      ? message(review.visibility)
+                      : translate("Não informado")}
+                  </dd>
                 </div>
                 <div>
                   <dt>{translate("SHA-256 verificado no servidor")}</dt>

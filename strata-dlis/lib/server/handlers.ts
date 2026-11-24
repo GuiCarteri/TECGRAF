@@ -1,3 +1,5 @@
+import type { UserProfile } from "../api-types";
+import { z } from "zod";
 import { readWellAssessment } from "../model/well-assessment";
 import { modelHandler } from "./model-handlers";
 import { validateRegions } from "../dlis/regions";
@@ -9,10 +11,11 @@ import { mayRead, companyMatches, validateHeader } from "../dlis/core.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 const now = () => new Date().toISOString(),
   uuid = () => crypto.randomUUID();
-const str = (x: any, max = 400) =>
+const str = (x: unknown, max = 400) =>
   typeof x === "string" ? x.trim().slice(0, max) : "";
-const hashOk = (h: any) => typeof h === "string" && /^[a-f0-9]{64}$/.test(h);
-const json = (data: any, status = 200) =>
+const hashOk = (h: unknown) =>
+  typeof h === "string" && /^[a-f0-9]{64}$/.test(h);
+const json = (data: unknown, status = 200) =>
   Response.json(data, {
     status,
     headers: {
@@ -20,7 +23,39 @@ const json = (data: any, status = 200) =>
       "X-Content-Type-Options": "nosniff",
     },
   });
-const parseFile = (f: any) => ({
+type FileJsonColumns = { types: string; metadata?: string };
+type StoredFile = FileJsonColumns & {
+  status: string;
+  object_key: string;
+  original_name: string;
+  owner_id: string;
+  visibility: string;
+};
+type StoredUpload = {
+  object_key: string;
+  upload_id: string;
+  size: number;
+  hash: string;
+  name: string;
+};
+
+// A publicação aceita metadados de versões anteriores e preserva os campos técnicos da fonte.
+const uploadMetadata = z.looseObject({
+  version: z.literal("V1.00"),
+  warnings: z.array(z.string()).optional(),
+  logicalFiles: z.array(
+    z.looseObject({
+      origin: z.looseObject({ company: z.string().nullish() }).nullish(),
+      frames: z.array(
+        z.looseObject({
+          channels: z.array(z.looseObject({ kind: z.string().optional() })),
+        }),
+      ),
+    }),
+  ),
+});
+
+const parseFile = (f: FileJsonColumns) => ({
   ...f,
   types: JSON.parse(f.types || "[]"),
   metadata: f.metadata ? JSON.parse(f.metadata) : undefined,
@@ -38,8 +73,11 @@ async function body(req: Request, limit = 5_000_000) {
     throw new HttpError("Dados inválidos.");
   }
 }
-async function fileById(id: string, user: any) {
-  const f = await query("SELECT * FROM files WHERE id=?", id).first<any>();
+async function fileById(id: string, user: UserProfile) {
+  const f = await query(
+    "SELECT * FROM files WHERE id=?",
+    id,
+  ).first<StoredFile>();
   if (!f || f.status === "deleting" || !mayRead(f, user))
     throw new HttpError("Arquivo não encontrado ou sem permissão.", 404);
   return f;
@@ -61,7 +99,7 @@ export async function handle(request: Request, path: string[]) {
     if (route === "files" && request.method === "GET" && !id) {
       const r = await query(
         "SELECT id,well,field,company,collection,run,location,types,depth_label,size,publisher,published_at,status,original_name FROM files WHERE status='validated' AND visibility='public' ORDER BY collection,published_at DESC",
-      ).all();
+      ).all<FileJsonColumns>();
       return json({ files: r.results.map(parseFile) });
     }
     if (route === "files" && id && request.method === "GET") {
@@ -142,7 +180,7 @@ export async function handle(request: Request, path: string[]) {
         "SELECT * FROM uploads WHERE id=? AND owner_id=?",
         id,
         user.id,
-      ).first<any>();
+      ).first<StoredUpload>();
       if (!row) throw new HttpError("Envio não encontrado.", 404);
       const upload = bucket().resumeMultipartUpload(
         row.object_key,
@@ -174,27 +212,12 @@ export async function handle(request: Request, path: string[]) {
         return json(await upload.uploadPart(n, bytes));
       }
       if (request.method === "POST" && action === "complete") {
-        const b = await body(request),
-          m = b.metadata;
+        const b = await body(request);
+        const parsed = uploadMetadata.safeParse(b.metadata);
         if (
           b.authorized !== true ||
           b.confirmed !== true ||
-          !m ||
-          m.version !== "V1.00" ||
-          !Array.isArray(m.logicalFiles) ||
-          !m.logicalFiles.every(
-            (lf: { frames?: { channels?: unknown[] }[] } | null) =>
-              lf &&
-              Array.isArray(lf.frames) &&
-              lf.frames.every(
-                (frame) =>
-                  frame &&
-                  Array.isArray(frame.channels) &&
-                  frame.channels.every(
-                    (channel) => channel && typeof channel === "object",
-                  ),
-              ),
-          ) ||
+          !parsed.success ||
           !str(b.collection) ||
           !str(b.company)
         )
@@ -206,6 +229,7 @@ export async function handle(request: Request, path: string[]) {
           b.parts.length !== Math.ceil(row.size / (8 * 1024 * 1024))
         )
           throw new HttpError("Envio incompleto.");
+        const m = parsed.data;
         const alreadyStored = await bucket().head(row.object_key);
         const object = alreadyStored || (await upload.complete(b.parts));
         const downloaded = await bucket().get(row.object_key);
@@ -227,21 +251,19 @@ export async function handle(request: Request, path: string[]) {
           throw new HttpError("SHA-256 divergente: o arquivo não foi aceito.");
         }
         const origins = m.logicalFiles
-          .map((lf: any) => lf.origin?.company)
+          .map((lf) => lf.origin?.company)
           .filter(Boolean);
         const match =
           origins.length > 0 &&
-          origins.every((c: string) => companyMatches(c, b.company));
+          origins.every((c) => companyMatches(c, b.company));
         const status = match && !m.warnings?.length ? "pending" : "review";
         const types = [
           ...new Set(
             m.logicalFiles
-              .flatMap((lf: any) =>
-                lf.frames.flatMap((f: any) =>
-                  f.channels.map((c: any) => c.kind),
-                ),
+              .flatMap((lf) =>
+                lf.frames.flatMap((f) => f.channels.map((c) => c.kind)),
               )
-              .filter((t: any) => ["CBL", "VDL", "USIT", "GR"].includes(t)),
+              .filter((t) => ["CBL", "VDL", "USIT", "GR"].includes(t ?? "")),
           ),
         ];
         try {
@@ -297,13 +319,13 @@ export async function handle(request: Request, path: string[]) {
               "SELECT * FROM analyses WHERE owner_id=? AND hash=? ORDER BY updated_at DESC",
               user.id,
               hash,
-            ).all()
+            ).all<{ points?: string; settings?: string }>()
           : await query(
               "SELECT id,hash,file_name,name,updated_at FROM analyses WHERE owner_id=? ORDER BY updated_at DESC LIMIT 200",
               user.id,
-            ).all();
+            ).all<{ points?: string; settings?: string }>();
         return json({
-          analyses: r.results.map((a: any) => ({
+          analyses: r.results.map((a) => ({
             ...a,
             points: a.points ? JSON.parse(a.points) : undefined,
             settings: a.settings ? JSON.parse(a.settings) : undefined,
@@ -347,7 +369,7 @@ export async function handle(request: Request, path: string[]) {
         const existing = await query(
           "SELECT owner_id,hash FROM analyses WHERE id=?",
           aid,
-        ).first<any>();
+        ).first<{ owner_id: string; hash: string }>();
         if (
           existing &&
           (existing.owner_id !== user.id || existing.hash !== b.hash)
@@ -433,7 +455,7 @@ export async function handle(request: Request, path: string[]) {
           await query(
             "SELECT * FROM files WHERE owner_id=? ORDER BY created_at DESC",
             u.id,
-          ).all()
+          ).all<FileJsonColumns>()
         ).results.map(parseFile),
       });
     }
@@ -462,7 +484,7 @@ export async function handle(request: Request, path: string[]) {
             files: (
               await query(
                 "SELECT * FROM files ORDER BY created_at DESC LIMIT 500",
-              ).all()
+              ).all<FileJsonColumns>()
             ).results.map(parseFile),
           });
         if (request.method !== "POST")
@@ -487,7 +509,7 @@ export async function handle(request: Request, path: string[]) {
       }
     }
     throw new HttpError("Recurso não encontrado.", 404);
-  } catch (e: any) {
+  } catch (e) {
     if (!(e instanceof HttpError))
       console.error("[STRATA API] unexpected server error");
     return json(
@@ -497,7 +519,7 @@ export async function handle(request: Request, path: string[]) {
             ? e.message
             : "Serviço temporariamente indisponível. Seus dados não foram descartados.",
       },
-      e.status || 503,
+      e instanceof HttpError ? e.status : 503,
     );
   }
 }

@@ -11,9 +11,39 @@ import {
   ArrowUpRight,
   Menu,
 } from "lucide-react";
+import Link from "next/link";
+import type { UserProfile } from "@/lib/api-types";
 import { api } from "@/lib/api";
 import { LanguageSelector } from "./language-selector";
 import { Toaster } from "@/components/ui/sonner";
+// A navegação de documento permite o aviso nativo quando há marcações sem salvar.
+export function LibraryLink({
+  children,
+  className,
+  preserveUnsaved = false,
+}: {
+  children: React.ReactNode;
+  className: string;
+  preserveUnsaved?: boolean;
+}) {
+  return (
+    <Link
+      href="/"
+      prefetch={false}
+      className={className}
+      onNavigate={
+        preserveUnsaved
+          ? (event) => {
+              event.preventDefault();
+              window.location.assign(new URL("/", window.location.origin));
+            }
+          : undefined
+      }
+    >
+      {children}
+    </Link>
+  );
+}
 export function Shell({
   children,
   active,
@@ -22,31 +52,34 @@ export function Shell({
   active: string;
 }) {
   const { translate } = useI18n();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [menu, setMenu] = useState(false);
   useEffect(() => {
-    api("me")
+    api<{ user: UserProfile | null }>("me")
       .then((d) => setUser(d.user))
       .catch(() => {});
   }, []);
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a href="/" className="brand">
+        <LibraryLink className="brand" preserveUnsaved={active === "viewer"}>
           <Layers3 size={28} />
           <span>
             STRATA<span className="brand-divider">/</span>
             <small>{translate("DLIS WORKSPACE")}</small>
           </span>
-        </a>
+        </LibraryLink>
         <nav
           aria-label={translate("Navegação principal")}
           className={menu ? "topnav open" : "topnav"}
         >
-          <a className={active === "library" ? "active" : ""} href="/">
+          <LibraryLink
+            className={active === "library" ? "active" : ""}
+            preserveUnsaved={active === "viewer"}
+          >
             <LibraryBig size={17} />
             {translate("Biblioteca")}
-          </a>
+          </LibraryLink>
           <a className={active === "viewer" ? "active" : ""} href="/viewer">
             <ScanLine size={17} />
             {translate("Visualizador")}

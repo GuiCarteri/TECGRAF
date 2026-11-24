@@ -7,7 +7,16 @@ import {
 } from "@/lib/model/well-assessment";
 import { QualityAudit } from "./curve-quality";
 import { useI18n } from "@/lib/i18n/provider";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { LibraryLink } from "./shell";
+import type {
+  DlisMetadata,
+  DecodedFrame,
+  FrameMetadata,
+  CalibrationForm,
+} from "@/lib/dlis/types";
+import type { LogPoint } from "@/lib/dlis/points";
+import type { PublicationFile, SavedAnalysis } from "@/lib/api-types";
+import { useState, useRef, useEffect, useEffectEvent, useMemo } from "react";
 import {
   Upload,
   FileSearch,
@@ -55,7 +64,6 @@ import { DlisClient } from "@/lib/dlis/client";
 import {
   detectChannel,
   isDlisName,
-  numericRange,
   metersFactor,
   defaultDepthChannel,
   boundedInterval,
@@ -71,31 +79,55 @@ import { Waveform } from "./waveform";
 import { PointsTable } from "./points-table";
 const kinds = ["GR", "CBL", "VDL", "USIT"];
 const scalarKinds = ["GR", "CBL"];
+function options(m: DlisMetadata | null) {
+  if (!m) return [];
+  return m.logicalFiles.flatMap((lf) =>
+    lf.frames.flatMap((frame) =>
+      frame.channels.map((channel) => ({
+        value: lf.index + "|" + frame.key + "|" + channel.key,
+        label: `LF ${lf.index + 1} · ${frame.name} · ${channel.name} [${channel.units || "s/u"}; ${channel.dimension.join("×")}]`,
+        lf: lf.index,
+        frame,
+        channel,
+      })),
+    ),
+  );
+}
+function depthNames(frame: FrameMetadata) {
+  return frame.channels.filter(
+    (c) =>
+      c.dimension.reduce((a: number, b: number) => a * b, 1) === 1 &&
+      metersFactor(c.units) !== null,
+  );
+}
+
 export function Viewer({ file: remoteId }: { file?: string }) {
   const { translate, message, locale } = useI18n();
   const none = { value: "", label: translate("Nenhum canal selecionado") };
   const [file, setFile] = useState<File | null>(null),
-    [meta, setMeta] = useState<any>(null),
-    [busy, setBusy] = useState(""),
+    [meta, setMeta] = useState<DlisMetadata | null>(null),
+    [busy, setBusy] = useState(remoteId ? "Carregando arquivo…" : ""),
     [error, setError] = useState(""),
     [choices, setChoices] = useState<Record<string, string>>({}),
     [tracks, setTracks] = useState<Record<string, Track>>({}),
-    [from, setFrom] = useState(0),
-    [to, setTo] = useState(1),
-    [full, setFull] = useState([0, 1]),
-    [point, setPoint] = useState<any>(null),
-    [points, setPoints] = useState<any[]>([]),
+    [zoomWindow, setZoomWindow] = useState<{
+      selection: string;
+      from: number;
+      to: number;
+    } | null>(null),
+    [point, setPoint] = useState<LogPoint | null>(null),
+    [points, setPoints] = useState<LogPoint[]>([]),
     [agc, setAgc] = useState(false),
     [metadataOpen, setMetadataOpen] = useState(false),
     [mappingOpen, setMappingOpen] = useState(false),
     [calibrationOpen, setCalibrationOpen] = useState(false),
-    [calibration, setCalibration] = useState<any>({
+    [calibration, setCalibration] = useState<CalibrationForm>({
       reference: "",
       goodMax: "",
       badMin: "",
       source: "Informado pelo usuário",
     }),
-    [analyses, setAnalyses] = useState<any[]>([]),
+    [analyses, setAnalyses] = useState<SavedAnalysis[]>([]),
     [analysisId, setAnalysisId] = useState(""),
     [analysisName, setAnalysisName] = useState("Minha análise"),
     [dirty, setDirty] = useState(false),
@@ -106,7 +138,6 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     [sample, setSample] = useState(0),
     [component, setComponent] = useState(0),
     [pendingFile, setPendingFile] = useState<File | null>(null),
-    [remoteFile, setRemoteFile] = useState<any>(null),
     [trackErrors, setTrackErrors] = useState<Record<string, string>>({}),
     [decoding, setDecoding] = useState<Record<string, boolean>>({}),
     [progress, setProgress] = useState(""),
@@ -118,15 +149,19 @@ export function Viewer({ file: remoteId }: { file?: string }) {
   const currentAssessment = useMemo(() => {
     let cached: WellAssessment | undefined;
     return () =>
-      (cached ??= wellAssessment(tracks, meta.hash, meta.logicalFiles));
+      (cached ??= wellAssessment(
+        tracks,
+        meta?.hash ?? "",
+        meta?.logicalFiles ?? [],
+      ));
   }, [tracks, meta]);
   const [regions, setRegions] = useState<Region[]>([]);
   const parser = useRef<DlisClient | null>(null),
-    cache = useRef(new Map<string, Promise<any>>()),
+    cache = useRef(new Map<string, Promise<DecodedFrame>>()),
     generation = useRef(0),
     input = useRef<HTMLInputElement>(null),
     remoteAbort = useRef<AbortController | null>(null),
-    currentMeta = useRef<any>(null),
+    currentMeta = useRef<DlisMetadata | null>(null),
     selVersions = useRef<Record<string, number>>({});
   useEffect(() => () => parser.current?.destroy(), []);
   useEffect(() => {
@@ -139,25 +174,28 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     window.addEventListener("beforeunload", f);
     return () => window.removeEventListener("beforeunload", f);
   }, [dirty]);
+  const loadRemoteFile = useEffectEvent(loadFile);
   useEffect(() => {
     if (!remoteId) return;
     let stopped = false;
     const controller = new AbortController();
     remoteAbort.current = controller;
-    setBusy("Carregando arquivo…");
-    api("files/" + remoteId, { signal: controller.signal })
+    api<{ file: PublicationFile }>("files/" + encodeURIComponent(remoteId), {
+      signal: controller.signal,
+    })
       .then(async (d) => {
         if (stopped) return;
-        setRemoteFile(d.file);
         const r = await authenticatedFetch(
-          "/api/files/" + remoteId + "/content",
+          "/api/files/" + encodeURIComponent(remoteId) + "/content",
           { signal: controller.signal },
         );
-        if (!r.ok)
-          throw new Error(translate("Não foi possível baixar o arquivo."));
+        if (!r.ok) throw new Error("Não foi possível baixar o arquivo.");
         const blob = await r.blob();
         if (!stopped && !controller.signal.aborted)
-          await loadFile(new File([blob], d.file.original_name), remoteId);
+          await loadRemoteFile(
+            new File([blob], d.file.original_name),
+            remoteId,
+          );
       })
       .catch((e) => {
         if (!stopped && !controller.signal.aborted) setError(e.message);
@@ -170,27 +208,6 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       controller.abort();
     };
   }, [remoteId]);
-  function options(m = meta) {
-    if (!m) return [];
-    return m.logicalFiles.flatMap((lf: any) =>
-      lf.frames.flatMap((frame: any) =>
-        frame.channels.map((channel: any) => ({
-          value: lf.index + "|" + frame.key + "|" + channel.key,
-          label: `LF ${lf.index + 1} · ${frame.name} · ${channel.name} [${channel.units || "s/u"}; ${channel.dimension.join("×")}]`,
-          lf: lf.index,
-          frame,
-          channel,
-        })),
-      ),
-    );
-  }
-  function depthNames(frame: any) {
-    return frame.channels.filter(
-      (c: any) =>
-        c.dimension.reduce((a: number, b: number) => a * b, 1) === 1 &&
-        metersFactor(c.units) !== null,
-    );
-  }
   async function setTrack(
     kind: string,
     id: string,
@@ -206,29 +223,22 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       delete next[kind];
       return next;
     });
-    if (!id) {
-      setTracks((t) => {
-        const v = { ...t };
-        delete v[kind];
-        return v;
-      });
-      return;
-    }
+    if (!id) return;
     setTrackErrors((e) => ({ ...e, [kind]: "" }));
-    const option = options(m).find((o: any) => o.value === id);
+    const option = options(m).find((o) => o.value === id);
     if (!option) return;
     try {
       setDecoding((d) => ({ ...d, [kind]: true }));
       const depth = depthOverride || defaultDepthChannel(option.frame);
       const channels = option.frame.channels
         .filter(
-          (c: any) =>
+          (c) =>
             c.name === option.channel.name ||
             c.name === depth ||
             c.dimension.reduce((a: number, b: number) => a * b, 1) === 1 ||
             /^(us|µs|μs|deg|degree|degrees|°)$/i.test(c.units),
         )
-        .map((c: any) => c.name);
+        .map((c) => c.name);
       const key = option.lf + "|" + option.frame.key + "|" + option.channel.key;
       if (!cache.current.has(key)) {
         const task = parser.current!.decode(
@@ -244,7 +254,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         if (cache.current.size > 6)
           cache.current.delete(cache.current.keys().next().value!);
       }
-      const result = await cache.current.get(key);
+      const result = await cache.current.get(key)!;
       if (selVersions.current[kind] !== n || currentMeta.current !== m) return;
       if (!depth)
         throw new Error(
@@ -262,15 +272,16 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         depth,
       );
       setTracks((t) => ({ ...t, [kind]: tr }));
-    } catch (e: any) {
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
       if (selVersions.current[kind] !== n || currentMeta.current !== m) return;
-      setTrackErrors((errors) => ({ ...errors, [kind]: e.message }));
+      setTrackErrors((errors) => ({ ...errors, [kind]: reason }));
       setTracks((t) => {
         const v = { ...t };
         delete v[kind];
         return v;
       });
-      toast.error(`${kind}: ${message(e.message)}`);
+      toast.error(`${kind}: ${message(reason)}`);
     } finally {
       if (selVersions.current[kind] === n && currentMeta.current === m)
         setDecoding((d) => ({ ...d, [kind]: false }));
@@ -287,6 +298,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     }
     const g = ++generation.current;
     currentMeta.current = null;
+    setZoomWindow(null);
     setTrackErrors({});
     setDecoding({});
     setProgress("");
@@ -319,14 +331,14 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       const opts = options(m);
       for (const k of kinds) {
         const matches = opts.filter(
-          (o: any) =>
+          (o) =>
             detectChannel(
               o.channel,
               o.channel.dimension.reduce((a: number, b: number) => a * b, 1),
             ) === k,
         );
         const exact = matches.filter(
-          (o: any) =>
+          (o) =>
             o.channel.name === k ||
             (k === "GR" && /^GR_/.test(o.channel.name)) ||
             (k === "USIT" && o.channel.name === "AIBK"),
@@ -341,14 +353,15 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         if (chosen) await setTrack(k, chosen.value, m);
       }
       if (g !== generation.current) return;
-      const cblRefs = m.logicalFiles.flatMap((lf: any) =>
+      const cblRefs = m.logicalFiles.flatMap((lf) =>
         lf.parameters.filter(
-          (p: any) =>
+          (p) =>
             /free.?pipe.*(amplitude|reference)/i.test(
               p.longName + " " + p.name,
             ) &&
             /^mv$/i.test(p.units) &&
             p.values?.length === 1 &&
+            typeof p.values[0] === "number" &&
             p.values[0] > 0,
         ),
       );
@@ -371,8 +384,9 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         post("history", { hash: m.hash, fileName: f.name, fileId }).catch((e) =>
           toast.error(message(e.message)),
         );
-    } catch (e: any) {
-      if (g === generation.current) setError(e.message);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      if (g === generation.current) setError(reason);
     } finally {
       if (g === generation.current) setBusy("");
     }
@@ -380,7 +394,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
   useEffect(() => {
     if (!syncEnabled || !meta) return;
     let stopped = false;
-    api("analyses?hash=" + meta.hash)
+    api<{ analyses: SavedAnalysis[] }>("analyses?hash=" + meta.hash)
       .then((d) => {
         if (!stopped) setAnalyses(d.analyses);
       })
@@ -390,7 +404,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     return () => {
       stopped = true;
     };
-  }, [syncEnabled, meta]);
+  }, [syncEnabled, meta, message]);
   function requestFile(f?: File) {
     if (!f) return;
     if (dirty) {
@@ -398,26 +412,29 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       return;
     }
     remoteAbort.current?.abort();
-    setRemoteFile(null);
     loadFile(f);
   }
-  useEffect(() => {
-    const ranges = Object.values(tracks)
-      .map((t) => numericRange(t.depth))
-      .filter(Boolean) as number[][];
-    if (ranges.length) {
-      const a = Math.min(...ranges.map((r) => r[0])),
-        b = Math.max(...ranges.map((r) => r[1]));
-      setFull([a, b > a ? b : a + 1]);
-      setFrom(a);
-      setTo(b > a ? b : a + 1);
+  const full = useMemo(() => {
+    let low = Infinity,
+      high = -Infinity;
+    for (const track of Object.values(tracks)) {
+      const sorted = track.index.indices;
+      if (sorted.length) {
+        low = Math.min(low, track.depth[sorted[0]]);
+        high = Math.max(high, track.depth[sorted[sorted.length - 1]]);
+      }
     }
-  }, [
-    Object.keys(tracks)
-      .map((k) => tracks[k].id + tracks[k].depthName)
-      .join(";"),
-  ]);
+    return Number.isFinite(low) ? [low, high > low ? high : low + 1] : [0, 1];
+  }, [tracks]);
+  const selection = JSON.stringify(
+    Object.values(tracks).map((track) => [track.id, track.depthName]),
+  );
+  const [from, to] =
+    zoomWindow?.selection === selection
+      ? [zoomWindow.from, zoomWindow.to]
+      : full;
   function choosePoint(track: Track, s: number, c: number, pin = false) {
+    if (!file || !meta) return;
     try {
       const cal = {
         ...calibration,
@@ -432,15 +449,15 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         setDirty(true);
         toast.success(translate("Ponto fixado no array original."));
       }
-    } catch (e: any) {
-      toast.error(message(e.message));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      toast.error(message(reason));
     }
   }
   function changeInterval(a: number, b: number) {
     const interval = boundedInterval(a, b, full);
     if (interval) {
-      setFrom(interval[0]);
-      setTo(interval[1]);
+      setZoomWindow({ selection, from: interval[0], to: interval[1] });
     }
   }
   function zoom(f: number, r = 0.5) {
@@ -471,7 +488,6 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     setDirty(false);
     setError("");
     setTrackErrors({});
-    setRemoteFile(null);
     if (input.current) input.current.value = "";
   }
   async function save() {
@@ -480,7 +496,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     const activeGeneration = generation.current;
     setBusy("Salvando análise…");
     try {
-      const d = await post("analyses", {
+      const d = await post<{ id: string }>("analyses", {
         id: analysisId || undefined,
         hash: meta.hash,
         fileName: file?.name,
@@ -501,19 +517,22 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       setAnalysisId(d.id);
       setDirty(false);
       setSavedAt(new Date().toISOString());
-      const all = await api("analyses?hash=" + meta.hash);
+      const all = await api<{ analyses: SavedAnalysis[] }>(
+        "analyses?hash=" + meta.hash,
+      );
       if (generation.current !== activeGeneration) return;
       setAnalyses(all.analyses);
       toast.success(translate("Análise salva na sua conta."));
-    } catch (e: any) {
-      toast.error(message(e.message));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      toast.error(message(reason));
     } finally {
       if (generation.current === activeGeneration) setBusy("");
     }
   }
   async function restore(id: string) {
     const a = analyses.find((a) => a.id === id);
-    if (!a) return;
+    if (!a || !meta) return;
     if (dirty) {
       toast.error(translate("Salve a análise atual antes de recuperar outra."));
       return;
@@ -536,6 +555,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     toast.success(translate("Pontos recuperados."));
   }
   async function exportData() {
+    if (!meta) return;
     try {
       await exportPoints(
         points.map((p) => ({ ...p, analysisId: analysisId || null })),
@@ -550,32 +570,32 @@ export function Viewer({ file: remoteId }: { file?: string }) {
           count: points.length,
         });
       toast.success(translate("Arquivo exportado."));
-    } catch (e: any) {
-      toast.error(message(e.message));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      toast.error(message(reason));
     }
   }
   const trackKinds = [...kinds, ...extra],
-    opts = useMemo(() => options(), [meta]);
+    opts = useMemo(() => options(meta), [meta]);
   const volve = meta?.logicalFiles.some(
-    (lf: any) =>
+    (lf) =>
       String(lf.origin?.fieldName).toLowerCase() === "volve" &&
       lf.origin?.wellName === "15/9-F-15 C" &&
       lf.origin?.runNumber === 2 &&
       /main pass up/i.test(
-        [
-          lf.origin?.fileSetName,
-          ...lf.frames.map((f: any) => f.description),
-        ].join(" "),
+        [lf.origin?.fileSetName, ...lf.frames.map((f) => f.description)].join(
+          " ",
+        ),
       ),
   );
   return (
     <div className="viewer-page">
       <div className="viewer-heading">
         <div>
-          <a className="breadcrumb" href="/">
+          <LibraryLink className="breadcrumb" preserveUnsaved={dirty}>
             <ArrowLeft size={13} />
             {translate("Biblioteca / Visualizador")}
-          </a>
+          </LibraryLink>
           <h1>
             {meta?.logicalFiles[0]?.origin?.wellName ||
               translate("Visualizador DLIS")}
@@ -712,7 +732,13 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                     type="number"
                     step="any"
                     value={from}
-                    onChange={(e) => setFrom(Number(e.target.value))}
+                    onChange={(e) =>
+                      setZoomWindow({
+                        selection,
+                        from: Number(e.target.value),
+                        to,
+                      })
+                    }
                   />{" "}
                   m
                 </label>
@@ -723,7 +749,13 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                     type="number"
                     step="any"
                     value={to}
-                    onChange={(e) => setTo(Number(e.target.value))}
+                    onChange={(e) =>
+                      setZoomWindow({
+                        selection,
+                        from,
+                        to: Number(e.target.value),
+                      })
+                    }
                   />{" "}
                   m
                 </label>
@@ -744,8 +776,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                 <button
                   className="button compact"
                   onClick={() => {
-                    setFrom(full[0]);
-                    setTo(full[1]);
+                    setZoomWindow(null);
                   }}
                 >
                   <RotateCcw size={14} />
@@ -784,8 +815,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                     className="button compact"
                     key={a}
                     onClick={() => {
-                      setFrom(a);
-                      setTo(b);
+                      setZoomWindow({ selection, from: a, to: b });
                     }}
                   >
                     {a}–{b} m
@@ -849,7 +879,13 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                               ? translate("OUTRA CURVA")
                               : k}
                           </strong>
-                          <small title={t?.channel.longName}>
+                          <small
+                            title={
+                              typeof t?.channel.longName === "string"
+                                ? t.channel.longName
+                                : undefined
+                            }
+                          >
                             {t
                               ? `${t.channel.name} · ${t.channel.units || translate("unidade não informada")}`
                               : translate("Nenhum canal correspondente")}
@@ -860,7 +896,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                             onChange={(v) => setTrack(k, v)}
                             options={[
                               none,
-                              ...opts.filter((o: any) => {
+                              ...opts.filter((o) => {
                                 const n = o.channel.dimension.reduce(
                                   (a: number, b: number) => a * b,
                                   1,
@@ -1276,7 +1312,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
               {message(w)}
             </div>
           ))}
-          {meta?.logicalFiles.map((lf: any) => (
+          {meta?.logicalFiles.map((lf) => (
             <section key={lf.index}>
               <h3>
                 {translate("Logical file")}
@@ -1294,7 +1330,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                   </div>
                 ))}
               </dl>
-              {lf.frames.map((f: any) => (
+              {lf.frames.map((f) => (
                 <details key={f.key}>
                   <summary>
                     {translate("Frame")}
@@ -1318,7 +1354,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {f.channels.map((c: any) => (
+                      {f.channels.map((c) => (
                         <TableRow key={c.key}>
                           <TableCell>{c.name}</TableCell>
                           <TableCell>
@@ -1364,7 +1400,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
             </DialogDescription>
           </DialogHeader>
           {trackKinds.map((k) => {
-            const o = opts.find((o: any) => o.value === choices[k]),
+            const o = opts.find((o) => o.value === choices[k]),
               t = tracks[k];
             return (
               <div className="panel stack" key={k}>
@@ -1388,7 +1424,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                             value: "",
                             label: translate("Selecione a profundidade"),
                           },
-                          ...depthNames(o.frame).map((c: any) => ({
+                          ...depthNames(o.frame).map((c) => ({
                             value: c.name,
                             label: c.name + " · " + c.units,
                           })),
@@ -1427,7 +1463,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                             },
                             ...o.frame.channels
                               .filter(
-                                (c: any) =>
+                                (c) =>
                                   t.result.strides[c.name] === t.stride &&
                                   (k === "VDL"
                                     ? /^(us|µs|μs)$/i.test(c.units)
@@ -1435,7 +1471,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                                         c.units,
                                       )),
                               )
-                              .map((c: any) => ({
+                              .map((c) => ({
                                 value: c.name,
                                 label: c.name + " · " + c.units,
                               })),

@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import { spawn } from "node:child_process";
 import http from "node:http";
 import assert from "node:assert/strict";
@@ -49,7 +50,7 @@ try {
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(logs.slice(-3000))), 60000);
     const inspect = () => {
-      if (logs.includes("Local:")) {
+      if (stripVTControlCharacters(logs).includes("Local:")) {
         clearTimeout(timer);
         resolve();
       }
@@ -65,6 +66,32 @@ try {
   assert.ok(
     Array.isArray(JSON.parse(catalog.text).files),
     "manual start initializes the same D1 database used by Vite",
+  );
+  for (const path of [
+    "/",
+    "/help",
+    "/login",
+    "/favicon.svg",
+    "/api/me",
+    "/api/auth/config",
+  ]) {
+    assert.equal((await request(path)).status, 200, path);
+  }
+  assert.deepEqual(JSON.parse((await request("/api/me")).text), { user: null });
+  for (const path of ["/viewer", "/publish", "/account", "/admin"]) {
+    const response = await request(path);
+    assert.equal(response.status, 307, path);
+    const login = new URL(response.headers.location, "https://" + host);
+    assert.equal(login.pathname, "/login");
+    assert.equal(login.searchParams.get("next"), path);
+  }
+  const register = await request("/register");
+  assert.equal(register.status, 307);
+  assert.match(register.headers.location, /mode=register/);
+  assert.equal((await request("/missing-strata-page")).status, 404);
+  assert.equal((await request("/api/missing-strata-route")).status, 404);
+  console.log(
+    "PASS: public pages, API and favicon 200; guest redirects 307; unknown page and API 404",
   );
   const locale = await request("/api/locale?lang=en", {
     Referer: `https://${host}/login?next=%2Faccount`,

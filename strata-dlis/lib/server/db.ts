@@ -8,7 +8,7 @@ export const bucket = () => {
     throw new Error("Armazenamento temporariamente indisponível.");
   return env.BUCKET;
 };
-export const query = (sql: string, ...args: any[]) =>
+export const query = (sql: string, ...args: unknown[]) =>
   database()
     .prepare(sql)
     .bind(...args);

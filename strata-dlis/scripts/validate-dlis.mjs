@@ -1,7 +1,7 @@
 // Optional validation on an authorized local DLIS. Does not upload its bytes.
 import fs from "node:fs";
 import { DLISFile } from "../lib/vendor/dlis-parser/index.js";
-import { validateHeader, sha256, extractMetadata } from "../lib/dlis/core.js";
+import { validateHeader, sha256 } from "../lib/dlis/core.js";
 const file = process.argv[2];
 if (!file)
   throw new Error("Use: node scripts/validate-dlis.mjs /path/file.DLIS");

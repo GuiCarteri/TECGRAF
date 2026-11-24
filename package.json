@@ -1,0 +1,15 @@
+{
+  "name": "tecgraf-strata-workspace",
+  "private": true,
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "setup": "npm --prefix strata-dlis run setup",
+    "dev": "npm --prefix strata-dlis run dev --",
+    "doctor": "node strata-dlis/scripts/doctor.mjs",
+    "seed": "npm --prefix strata-dlis run seed",
+    "lint": "npm --prefix strata-dlis run lint",
+    "typecheck": "npm --prefix strata-dlis run typecheck",
+    "test": "npm --prefix strata-dlis test",
+    "build": "npm --prefix strata-dlis run build"
+  }
+}

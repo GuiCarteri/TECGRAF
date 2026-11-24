@@ -79,7 +79,6 @@ export async function providerRequest(
   return data;
 }
 export async function providerUser(): Promise<Identity | null> {
-  if (!providerConfigured()) throw new HttpError("AUTH_NOT_CONFIGURED", 503);
   const token = (await cookies()).get("strata_access")?.value;
   if (!token) return null;
   try {

@@ -19,19 +19,20 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
+import type { AccountData, UserProfile } from "@/lib/api-types";
 import { api } from "@/lib/api";
 import { DeletePublication } from "./delete-publication";
 export function Account() {
   const { translate, message, locale } = useI18n();
-  const [data, setData] = useState<any>(null),
+  const [data, setData] = useState<AccountData | null>(null),
     [error, setError] = useState("");
   useEffect(() => {
     Promise.all([
-      api("me"),
-      api("analyses"),
-      api("history"),
-      api("my-files"),
-      api("exports"),
+      api<{ user: UserProfile | null }>("me"),
+      api<Pick<AccountData, "analyses">>("analyses"),
+      api<Pick<AccountData, "history">>("history"),
+      api<Pick<AccountData, "files">>("my-files"),
+      api<Pick<AccountData, "exports">>("exports"),
     ])
       .then(([me, a, h, f, e]) => {
         if (!me.user) throw new Error("AUTH_EXPIRED");
@@ -79,13 +80,11 @@ export function Account() {
               </p>
               <span className="badge" style={{ marginTop: 16 }}>
                 {
-                  (
-                    {
-                      user: translate("Usuário"),
-                      publisher: translate("Publicador"),
-                      admin: translate("Administrador"),
-                    } as any
-                  )[data.user.role]
+                  {
+                    user: translate("Usuário"),
+                    publisher: translate("Publicador"),
+                    admin: translate("Administrador"),
+                  }[data.user.role]
                 }
               </span>
               <div className="stack" style={{ marginTop: 30 }}>
@@ -103,7 +102,9 @@ export function Account() {
                   onClick={async () => {
                     try {
                       await api("auth/logout", { method: "POST" });
-                      window.location.assign("/");
+                      window.location.replace(
+                        new URL("/", window.location.origin),
+                      );
                     } catch (e) {
                       setError(
                         e instanceof Error
@@ -151,10 +152,8 @@ export function Account() {
                         )}
                       </p>
                     ) : (
-                      data.analyses.map((a: any) => {
-                        const h = data.history.find(
-                          (h: any) => h.hash === a.hash,
-                        );
+                      data.analyses.map((a) => {
+                        const h = data.history.find((h) => h.hash === a.hash);
                         return (
                           <div className="account-item" key={a.id}>
                             <div>
@@ -193,7 +192,7 @@ export function Account() {
                         {translate("Nenhum arquivo acessado.")}
                       </p>
                     ) : (
-                      data.history.map((h: any) => (
+                      data.history.map((h) => (
                         <div className="account-item" key={h.id}>
                           <div>
                             <b>{h.file_name}</b>
@@ -223,7 +222,7 @@ export function Account() {
                         {translate("Nenhum arquivo enviado.")}
                       </p>
                     ) : (
-                      data.files.map((f: any) => (
+                      data.files.map((f) => (
                         <div className="account-item" key={f.id}>
                           <div>
                             <b>{f.well || f.original_name}</b>
@@ -232,15 +231,13 @@ export function Account() {
                             </p>
                             <span className="badge">
                               {
-                                (
-                                  {
-                                    pending: translate("Pendente"),
-                                    review: translate("Revisão necessária"),
-                                    validated: translate("Validado"),
-                                    archived: translate("Arquivado"),
-                                    deleting: translate("Exclusão pendente"),
-                                  } as any
-                                )[f.status]
+                                {
+                                  pending: translate("Pendente"),
+                                  review: translate("Revisão necessária"),
+                                  validated: translate("Validado"),
+                                  archived: translate("Arquivado"),
+                                  deleting: translate("Exclusão pendente"),
+                                }[f.status]
                               }
                             </span>
                             {f.review_note && <p>{f.review_note}</p>}
@@ -255,18 +252,20 @@ export function Account() {
                             id={f.id}
                             name={f.original_name}
                             onDeleted={(id) =>
-                              setData((current: typeof data) => ({
-                                ...current,
-                                files: current.files.filter(
-                                  (file: { id: string }) => file.id !== id,
-                                ),
-                                history: current.history.map(
-                                  (entry: { file_id: string | null }) =>
-                                    entry.file_id === id
-                                      ? { ...entry, file_id: null }
-                                      : entry,
-                                ),
-                              }))
+                              setData(
+                                (current) =>
+                                  current && {
+                                    ...current,
+                                    files: current.files.filter(
+                                      (file) => file.id !== id,
+                                    ),
+                                    history: current.history.map((entry) =>
+                                      entry.file_id === id
+                                        ? { ...entry, file_id: null }
+                                        : entry,
+                                    ),
+                                  },
+                              )
                             }
                           />
                         </div>
@@ -292,7 +291,7 @@ export function Account() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {data.exports.map((e: any) => (
+                          {data.exports.map((e) => (
                             <TableRow key={e.id}>
                               <TableCell>
                                 {new Date(e.created_at).toLocaleString(locale)}

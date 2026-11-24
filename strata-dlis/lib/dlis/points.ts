@@ -1,12 +1,20 @@
 import { rawAt, validity, usit } from "./core.js";
 import type { Track } from "./plotting.js";
+import type { DlisMetadata } from "./types";
+export type LogPoint = ReturnType<typeof pointFromTrack>;
+
 export function pointFromTrack(
   track: Track,
   sample: number,
   component: number,
-  file: any,
-  meta: any,
-  calibration: any = {},
+  file: Pick<File, "name">,
+  meta: DlisMetadata,
+  calibration: {
+    reference?: number;
+    goodMax?: number;
+    badMin?: number;
+    source?: string;
+  } = {},
 ) {
   const raw = rawAt(
     track.result.data[track.channel.name],
@@ -14,24 +22,33 @@ export function pointFromTrack(
     sample,
     component,
   );
-  const extras: any = { timeUs: null, azimuth: null, microDebonding: null };
-  for (const [key, name, unit] of [
-    ["timeUs", track.timeName, "us"],
-    ["azimuth", track.azimuthName, "deg"],
+  const extras: {
+    timeUs: number | null;
+    azimuth: number | null;
+    microDebonding: string | null;
+  } = { timeUs: null, azimuth: null, microDebonding: null };
+  for (const [key, name] of [
+    ["timeUs", track.timeName],
+    ["azimuth", track.azimuthName],
   ] as const) {
     if (!name) continue;
-    const ch = track.frame.channels.find((c: any) => c.name === name),
+    const ch = track.frame.channels.find((c) => c.name === name),
       s = track.result.strides[name];
     if (s !== track.stride) continue;
     const v = rawAt(track.result.data[name], s, sample, component);
     if (validity(v) !== "Válido") continue;
-    if (key === "timeUs" && /^(us|µs|μs)$/i.test(ch?.units)) extras.timeUs = v;
-    if (key === "azimuth" && /^(deg|degree|degrees|°)$/i.test(ch?.units))
+    if (key === "timeUs" && /^(us|µs|μs)$/i.test(ch?.units ?? ""))
+      extras.timeUs = v;
+    if (key === "azimuth" && /^(deg|degree|degrees|°)$/i.test(ch?.units ?? ""))
       extras.azimuth = v;
   }
   let automaticClassification = null,
     reference = null;
-  if (track.kind === "CBL" && calibration.reference > 0) {
+  if (
+    track.kind === "CBL" &&
+    calibration.reference !== undefined &&
+    calibration.reference > 0
+  ) {
     reference = {
       value: calibration.reference,
       unit: "mV",
@@ -42,6 +59,8 @@ export function pointFromTrack(
     if (
       validity(raw) === "Válido" &&
       raw >= 0 &&
+      calibration.goodMax !== undefined &&
+      calibration.badMin !== undefined &&
       Number.isFinite(calibration.goodMax) &&
       Number.isFinite(calibration.badMin) &&
       calibration.badMin > calibration.goodMax
@@ -56,7 +75,7 @@ export function pointFromTrack(
     }
   }
   const md = track.frame.channels.find(
-    (c: any) =>
+    (c) =>
       /micro.?debond.*flag/i.test(c.name + " " + c.longName) &&
       track.result.strides[c.name] === track.stride,
   );
@@ -85,9 +104,8 @@ export function pointFromTrack(
     dimensions: track.channel.dimension.join(" × "),
     depth: track.depth[sample],
     depthRaw: track.result.data[track.depthName][sample],
-    depthRawUnit: track.frame.channels.find(
-      (c: any) => c.name === track.depthName,
-    )?.units,
+    depthRawUnit: track.frame.channels.find((c) => c.name === track.depthName)
+      ?.units,
     depthUnit: "m",
     curve: track.kind,
     rawValue: Number.isFinite(raw) ? raw : null,

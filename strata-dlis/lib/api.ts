@@ -27,7 +27,10 @@ export async function authenticatedFetch(
   }
   return response;
 }
-export async function api(path: string, init?: RequestInit) {
+export async function api<T = Record<string, unknown>>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const r = await authenticatedFetch("/api/" + path, {
     ...init,
     headers: {
@@ -37,15 +40,24 @@ export async function api(path: string, init?: RequestInit) {
       ...init?.headers,
     },
   });
-  const data = (await r.json().catch(() => ({}))) as Record<string, any>;
+  const data: unknown = await r.json().catch(() => null);
   if (!r.ok)
     throw new Error(
-      typeof data.error === "string" ? data.error : "UNKNOWN_ERROR",
+      data &&
+        typeof data === "object" &&
+        "error" in data &&
+        typeof data.error === "string"
+        ? data.error
+        : "UNKNOWN_ERROR",
     );
-  return data;
+  if (!data || typeof data !== "object" || Array.isArray(data))
+    throw new Error("Dados inválidos.");
+  return data as T;
 }
-export const post = (path: string, data: unknown) =>
-  api(path, { method: "POST", body: JSON.stringify(data) });
+export const post = <T = Record<string, unknown>>(
+  path: string,
+  data: unknown,
+) => api<T>(path, { method: "POST", body: JSON.stringify(data) });
 export const formatBytes = (n: number, locale = "pt-BR") =>
   new Intl.NumberFormat(locale, {
     minimumFractionDigits: 1,

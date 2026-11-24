@@ -1,26 +1,31 @@
-# STRATA — entrega completa, 06/11/2026
+# STRATA DLIS
 
-Projeto original preservado em `strata-dlis/`. Base: `revert-2-TESTE`, commit `5b379a38575b6d99bb74969d003dd2bf61347ff6`. Branch: `improvement/strata-scientific-viewer-20261029`.
+O STRATA é a biblioteca e o visualizador de perfis de poço RP66 V1 do projeto Tecgraf. O catálogo organiza os arquivos publicados por fonte. O visualizador abre um DLIS local no navegador para inspecionar curvas, profundidades e marcações.
 
-Abra esta pasta no VS Code ou crie um novo Codespace na branch `fix/strata-code-validation`. `.devcontainer/` prepara Node 24, pnpm e Python; a construção do container não foi testada neste ambiente e nenhum Codespace existente foi alterado.
+## Rodar localmente
+
+Na raiz deste repositório, com Node.js 22.18 ou superior e npm instalados, execute:
 
 ```bash
-cd strata-dlis
-pnpm install --frozen-lockfile
-pnpm setup:env
-# Preencha .dev.vars com seu ambiente Supabase autorizado.
-pnpm dev
+npm run dev
 ```
 
-O site inicia somente ao executar `pnpm dev`, que também prepara o banco local. Encerre com `Ctrl+C`. No Codespaces, mantenha apenas a porta 5173 privada. Após atualizar, use **Codespaces: Rebuild Container** uma vez para desativar a restauração automática de terminais/portas. O container já inclui pnpm; não execute `corepack enable`. Não existe conta/senha padrão. Autenticação e rotas privadas exigem configuração própria.
+Abra **http://localhost:5173**. A primeira execução baixa as dependências fixadas no lockfile, cria `strata-dlis/.dev.vars` se necessário e aplica as migrações no D1 local. O armazenamento R2 também é emulado no computador. Encerre pelo terminal com `Ctrl+C`. No Codespaces, abra a porta privada 5173 pela aba **Ports**. O servidor só inicia quando você executa o comando.
 
-- [Instalação e autenticação detalhadas](strata-dlis/README.md)
-- [Resultados e limitações](strata-dlis/docs/VALIDACAO.md)
-- [Diagnóstico e melhorias](strata-dlis/docs/ATUALIZACAO.md)
-- [Antes/depois](strata-dlis/docs/COMPARACAO_VISUAL.md)
-- [Segurança e infraestrutura institucional](strata-dlis/docs/SEGURANCA.md)
-- [Motor Python opcional](strata-dlis/science/README.md)
+| Comando na raiz | O que faz |
+| --- | --- |
+| `npm run seed` | Adiciona Aurora e Boreal à coleção **Exemplos sintéticos** no banco local. Pode ser repetido. Atualize a biblioteca para vê-los. |
+| `npm run doctor` | Confere Node, npm, dependências, porta e configuração opcional das contas. Exibe as correções em português. |
+| `npm run setup` | Instala as dependências pelo lockfile para executar as verificações separadamente. |
+| `npm run lint` e `npm run typecheck` | Verificam regras de código e tipos. |
+| `npm test` | Executa a suíte unitária. |
+| `npm run build` | Gera a aplicação para o Worker em `strata-dlis/dist`. |
 
-O ZIP contém todo o código versionado e a estrutura original; exclui dependências instaladas, caches, builds, banco, DLIS reais e segredos. Instale dependências pelo lockfile. Não houve deploy. Revise e homologue os serviços reais antes de substituir a versão anterior.
+O catálogo e o guia abrem como visitante. Para testar contas reais, configure a URL e a chave pública do seu Supabase em `strata-dlis/.dev.vars` e reinicie o servidor. O guia da aplicação descreve a configuração de e-mail e dos papéis de acesso.
 
-Atualização de cores e marcações: [guia e limitações](strata-dlis/docs/MARCACOES.md).
+- [Guia da aplicação e configuração de contas](strata-dlis/README.md)
+- [Roteiro das sete fases e situação das funcionalidades](ROADMAP.md)
+- [Auditoria de confiabilidade, testes e captura do catálogo](strata-dlis/docs/AUDITORIA_FASE_1.md)
+- [Modelo de dados](strata-dlis/docs/DATA_MODEL.md) e [indicadores de qualidade](strata-dlis/docs/DATA_QUALITY.md)
+- [Paletas e marcações](strata-dlis/docs/MARCACOES.md) e [motor científico opcional](strata-dlis/science/README.md)
+- [Histórico de validação](strata-dlis/docs/VALIDACAO.md) e [infraestrutura institucional](strata-dlis/docs/SEGURANCA.md)

@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 // Starts the isolated UI fixture and its test in the same network namespace.
 import { spawn } from "node:child_process";
 const server = spawn(
@@ -15,7 +16,7 @@ try {
       30000,
     );
     server.stdout.on("data", () => {
-      if (logs.includes("Local:")) {
+      if (stripVTControlCharacters(logs).includes("Local:")) {
         clearTimeout(timer);
         resolve();
       }

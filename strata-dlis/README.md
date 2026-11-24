@@ -16,18 +16,11 @@ O processamento do arquivo é client-side; biblioteca, autenticação, publicaç
 
 ## Instalação local
 
-Requisitos: Node.js **22.18 ou superior** (validado com 24.22.1), pnpm **11.25.0** e Python 3 para os testes SQLite/migração. Não há requisito de conta em ferramenta de geração de código.
+Com Node.js 22.18 ou superior e npm, execute `npm run dev` na raiz do repositório ou em `strata-dlis/`. A primeira execução instala as dependências com pnpm 11.25.0 pelo npm e aplica as migrações no D1 local. O catálogo abre em **http://localhost:5173**. Python é opcional para rodar o site e necessário para os testes de banco e de ciência.
 
-```bash
-pnpm install --frozen-lockfile
-pnpm setup:env
-# Preencha .dev.vars somente se ainda não estiver configurado.
-pnpm dev
-```
+Em outro terminal, `npm run seed` adiciona dois DLIS fictícios à coleção **Exemplos sintéticos**. Atualize a biblioteca para ver os exemplos. Use `npm run doctor` antes de iniciar para verificar o ambiente. As mensagens explicam em português como corrigir porta ocupada ou configuração incompleta.
 
-Abra o endereço local exibido pelo Vite, normalmente `http://127.0.0.1:5173`. `pnpm setup:env` funciona também no Windows e nunca sobrescreve `.dev.vars`. `.dev.vars` e o estado local `.wrangler/` são ignorados pelo Git.
-
-Preencha `.dev.vars` com o seu projeto Supabase antes de testar contas. Sem configuração, a biblioteca pública e o guia continuam acessíveis quando o D1 está inicializado; login informa a configuração ausente e as rotas privadas permanecem bloqueadas. **Não existe conta padrão ou login de demonstração.**
+O arquivo `.env.example` contém os valores do modo público. O início manual cria `.dev.vars` apenas se o arquivo ainda não existir. O Git ignora as variáveis locais e o estado `.wrangler/`. Contas reais exigem `SUPABASE_URL` e `SUPABASE_ANON_KEY`. A ausência das duas variáveis mantém o catálogo público disponível e as rotas privadas protegidas.
 
 O ID D1 zerado em `wrangler.json` serve apenas como placeholder local. `pnpm deploy` recusa esse ID. O Vite/Miniflare pode buscar informações auxiliares da Cloudflare; em um ambiente local sem essa conectividade, use `CLOUDFLARE_CF_FETCH_ENABLED=false`. Isso não substitui o provedor de autenticação nem altera permissões.
 
@@ -37,9 +30,9 @@ Abrir o Codespace **não executa o site**. A configuração desativa restauraç�
 
 Depois de atualizar o código, aplique a configuração do container com **Codespaces: Rebuild Container** uma vez. Isso encerra os processos antigos. Alterar o repositório não encerra um servidor que já esteja rodando; enquanto não reconstruir, pare o terminal antigo com `Ctrl+C`.
 
-Para iniciar quando quiser: `cd strata-dlis` e `pnpm dev`. Para encerrar: `Ctrl+C`. Esse comando prepara apenas o D1 local e inicia o Vite na porta 5173; se ela estiver ocupada, retorna erro em vez de abrir 5174, 5175 etc. Mantenha a porta privada na aba **Ports**. No ambiente Codespaces, o endereço HTTPS do próprio Codespace é autorizado e usado pelo WebSocket.
+Para iniciar, execute `npm run dev` na raiz. Encerre com `Ctrl+C`. Esse comando prepara apenas o D1 local e inicia o Vite na porta 5173; se ela estiver ocupada, retorna erro em vez de abrir 5174, 5175 etc. Mantenha a porta privada na aba **Ports**. No ambiente Codespaces, o endereço HTTPS do próprio Codespace é autorizado e usado pelo WebSocket.
 
-O container já instala pnpm; não é necessário executar `corepack enable` nele (isso pode causar EACCES). Fora do container, instale pnpm 11.25.0 pelo método permitido no seu computador.
+O container já instala pnpm; não é necessário executar `corepack enable` nele (isso pode causar EACCES). O comando `npm run dev` obtém a versão fixada do pnpm também fora do container.
 
 Idioma muda imediatamente quando o JavaScript está disponível. **Aplicar** não recarrega a página nesse caso, preservando arquivo local e formulários. Sem JavaScript, **Aplicar** usa o formulário nativo e recarrega o idioma no servidor. O login também aceita envio nativo; senhas de contas existentes são validadas pelo Supabase, e a exigência de oito caracteres permanece para cadastro e nova senha.
 
@@ -143,7 +136,7 @@ pnpm test:integration
 node tests/ssr.mjs
 ```
 
-`tests/integration.mjs` executa o Worker compilado com D1/R2 isolados e um provedor simulado apenas no processo de teste. Não substitui a homologação com Supabase e e-mail reais. O teste de integridade cobre exportador e avisos legais inalterados. O parser modificado é verificado por fixtures codificadas e comparação numérica independente.
+`tests/integration.mjs` executa o Worker compilado com D1/R2 isolados e um provedor simulado apenas no processo de teste. Não substitui a homologação com Supabase e e-mail reais. O teste de integridade confere as assinaturas revisadas do exportador e dos avisos de terceiros. O parser modificado é verificado por fixtures codificadas e comparação numérica independente.
 
 Testes de navegador (cada comando inicia/encerra seu servidor isolado):
 
@@ -175,7 +168,7 @@ Inspecione/fixe pontos; VDL exibe a waveform original. Matrizes usam índice de 
 
 Histórico/sincronização de arquivos locais começa desligado. Ativá-lo transmite metadados à API; **Salvar análise** transmite os pontos. **Publicar** é upload separado com autorização/revisão. Abrir localmente não publica os bytes. Cancelar/fechar encerra o Worker; pontos não salvos exigem confirmação de descarte.
 
-Consulte [validação](docs/VALIDACAO.md), [segurança](docs/SEGURANCA.md) e [antes/depois](docs/COMPARACAO_VISUAL.md). O lint permanece com falhas; suas regras não foram desligadas.
+Consulte [validação](docs/VALIDACAO.md), [segurança](docs/SEGURANCA.md) e [antes/depois](docs/COMPARACAO_VISUAL.md). A [auditoria mais recente](docs/AUDITORIA_FASE_1.md) registra o lint, as dependências e as regressões desta branch.
 
 ## Fontes oficiais consultadas
 

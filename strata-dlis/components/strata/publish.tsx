@@ -19,7 +19,13 @@ import {
   TableRow,
   TableCell,
 } from "@/components/ui/table";
-import { api, post, formatBytes, authenticatedFetch } from "@/lib/api";
+import type { UserProfile } from "@/lib/api-types";
+import type {
+  DlisMetadata,
+  FrameValidation,
+  OriginMetadata,
+} from "@/lib/dlis/types";
+import { api, post, formatBytes } from "@/lib/api";
 import { DlisClient } from "@/lib/dlis/client";
 import {
   companyMatches,
@@ -32,17 +38,19 @@ import {
 import { Pick } from "./controls";
 export function Publication() {
   const { translate, message, locale } = useI18n();
-  const [user, setUser] = useState<any>(null),
+  const [user, setUser] = useState<UserProfile | null>(null),
     [accountLoaded, setAccountLoaded] = useState(false),
     [file, setFile] = useState<File | null>(null),
-    [meta, setMeta] = useState<any>(null),
+    [meta, setMeta] = useState<
+      (DlisMetadata & { validation: FrameValidation[] }) | null
+    >(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(""),
     [progress, setProgress] = useState(0),
     [stage, setStage] = useState(1),
     [confirmed, setConfirmed] = useState(false),
     [authorized, setAuthorized] = useState(false),
-    [result, setResult] = useState<any>(null),
+    [result, setResult] = useState<{ id: string; status: string } | null>(null),
     [form, setForm] = useState({
       well: "",
       field: "",
@@ -57,7 +65,8 @@ export function Publication() {
     input = useRef<HTMLInputElement>(null),
     stop = useRef(false);
   useEffect(() => {
-    api("me")
+    stop.current = false;
+    api<{ user: UserProfile | null }>("me")
       .then((d) => setUser(d.user))
       .catch((e) => setError(e.message))
       .finally(() => setAccountLoaded(true));
@@ -91,15 +100,15 @@ export function Publication() {
     parser.current?.destroy();
     parser.current = new DlisClient();
     try {
-      const m = await parser.current.parse(f),
-        ranges: number[][] = [];
-      m.validation = [];
+      const m = await parser.current.parse(f);
+      const ranges: number[][] = [];
+      const validation: FrameValidation[] = [];
       for (const lf of m.logicalFiles) {
         for (const frame of lf.frames) {
           try {
             const r = await parser.current.decode(lf.index, frame.key);
             const ds = frame.channels.filter(
-              (c: any) => detectChannel(c, r.strides[c.name]) === "DEPTH",
+              (c) => detectChannel(c, r.strides[c.name]) === "DEPTH",
             );
             let range = null;
             if (ds.length === 1) {
@@ -110,32 +119,35 @@ export function Publication() {
                 ranges.push(range);
               }
             }
-            m.validation.push({
+            validation.push({
               lf: lf.index,
               frame: frame.key,
               samples: r.frameCount,
               depthRangeMeters: range,
               ok: true,
             });
-          } catch (e: any) {
-            m.validation.push({
+          } catch (error) {
+            const reason =
+              error instanceof Error ? error.message : "UNKNOWN_ERROR";
+            validation.push({
               lf: lf.index,
               frame: frame.key,
               ok: false,
-              error: e.message,
+              error: reason,
             });
-            m.warnings.push(frame.name + ": " + e.message);
+            m.warnings.push(frame.name + ": " + reason);
           }
         }
       }
-      const origins = m.logicalFiles.map((l: any) => l.origin).filter(Boolean),
-        origin = origins[0] || {};
-      const unique = (k: string) => {
+      const origins = m.logicalFiles
+        .map((l) => l.origin)
+        .filter((origin) => origin !== null);
+      const unique = (k: keyof OriginMetadata) => {
         const v = [
           ...new Set(
             origins
-              .map((o: any) => o[k])
-              .filter((v: any) => v !== null && v !== "" && v !== undefined),
+              .map((o) => o[k])
+              .filter((v) => v !== null && v !== "" && v !== undefined),
           ),
         ];
         return v.length === 1 ? String(v[0]) : "";
@@ -153,10 +165,11 @@ export function Publication() {
         visibility: "public",
         depthLabel: label,
       });
-      setMeta(m);
+      setMeta({ ...m, validation });
       setStage(2);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      setError(reason);
     } finally {
       setBusy("");
     }
@@ -168,7 +181,7 @@ export function Publication() {
     setProgress(0);
     let uploadId = "";
     try {
-      const d = await post("uploads", {
+      const d = await post<{ id: string }>("uploads", {
         name: file.name,
         size: file.size,
         hash: meta.hash,
@@ -188,18 +201,22 @@ export function Publication() {
         );
       }
       setBusy("Conferindo integridade e registrando publicação…");
-      const r = await post("uploads/" + uploadId + "/complete", {
-        ...form,
-        metadata: meta,
-        authorized,
-        confirmed,
-        parts,
-      });
+      const r = await post<{ id: string; status: string }>(
+        "uploads/" + uploadId + "/complete",
+        {
+          ...form,
+          metadata: meta,
+          authorized,
+          confirmed,
+          parts,
+        },
+      );
       setProgress(100);
       setResult(r);
       setStage(4);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      setError(reason);
       if (uploadId)
         api("uploads/" + uploadId, { method: "DELETE" }).catch(() => {});
     } finally {
@@ -230,8 +247,9 @@ export function Publication() {
       </div>
     );
   const detected =
-      meta?.logicalFiles.map((lf: any) => lf.origin?.company).filter(Boolean) ||
-      [],
+      meta?.logicalFiles
+        .map((lf) => lf.origin?.company)
+        .filter((company): company is string => Boolean(company)) || [],
     matches =
       detected.length > 0 &&
       detected.every((c: string) => companyMatches(c, form.company));
@@ -351,7 +369,7 @@ export function Publication() {
                 )}
               </div>
             )}
-            {meta?.warnings.length > 0 && (
+            {meta && meta.warnings.length > 0 && (
               <div className="notice warning">
                 {meta.warnings.map((w: string, i: number) => (
                   <p key={i}>{message(w)}</p>
@@ -359,19 +377,24 @@ export function Publication() {
               </div>
             )}
             <div className="form-grid">
-              {[
-                ["well", translate("Nome do poço")],
-                ["field", translate("Campo")],
-                ["company", translate("Empresa confirmada *")],
-                ["collection", translate("Coleção / fonte de dados *")],
-                ["run", "Run"],
-                ["depthLabel", translate("Profundidade disponível (extraída)")],
-              ].map(([k, label]) => (
+              {(
+                [
+                  ["well", translate("Nome do poço")],
+                  ["field", translate("Campo")],
+                  ["company", translate("Empresa confirmada *")],
+                  ["collection", translate("Coleção / fonte de dados *")],
+                  ["run", "Run"],
+                  [
+                    "depthLabel",
+                    translate("Profundidade disponível (extraída)"),
+                  ],
+                ] as const
+              ).map(([k, label]) => (
                 <label className="form-field" key={k}>
                   {label}
                   <input
                     disabled={stage === 3 || k === "depthLabel"}
-                    value={(form as any)[k]}
+                    value={form[k]}
                     onChange={(e) => update(k, e.target.value)}
                     placeholder={
                       k === "collection"
@@ -455,14 +478,14 @@ export function Publication() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {meta?.validation.map((v: any, i: number) => (
+                {meta?.validation.map((v, i) => (
                   <TableRow key={i}>
                     <TableCell>{v.lf + 1}</TableCell>
                     <TableCell>{v.frame}</TableCell>
                     <TableCell>
                       {
                         meta.logicalFiles[v.lf].frames.find(
-                          (f: any) => f.key === v.frame,
+                          (f) => f.key === v.frame,
                         )?.channels.length
                       }
                     </TableCell>

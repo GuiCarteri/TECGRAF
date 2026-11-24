@@ -18,5 +18,5 @@ async function Protected({ params }: { params: Record<string, string> }) {
   const next =
     "/viewer" + (params.file ? "?file=" + encodeURIComponent(params.file) : "");
   await requireIdentity(next);
-  return <Viewer {...params} />;
+  return <Viewer key={params.file || "local"} file={params.file} />;
 }

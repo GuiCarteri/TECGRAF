@@ -1,6 +1,6 @@
 import { pointFields, pointsCSV } from "./core.js";
 export async function exportPoints(
-  points: any[],
+  points: Record<string, unknown>[],
   format: string,
   hash: string,
 ) {

@@ -8,11 +8,11 @@
  */
 
 import {
-  RC, RC_SIZE, NULL_VALUES,
+  RC_SIZE, NULL_VALUES,
   LRS_EFLR, LRS_PREDECESSOR, LRS_SUCCESSOR, LRS_CHECKSUM, LRS_TRAILING, LRS_PADDING,
 } from './constants.js';
 import { BinaryReader } from './BinaryReader.js';
-import { parseEFLR, getAttr, normalizeRC, scanChannelOBNAMEs } from './eflr.js';
+import { parseEFLR, getAttr, normalizeRC } from './eflr.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -237,7 +237,7 @@ function processChannels(eflr, channels) {
   }
 }
 
-function extractChanRefs(obj, rawData) {
+function extractChanRefs(obj) {
   const raw = getAttr(obj, 'CHANNELS');
   if (!raw) return [];
   const arr = Array.isArray(raw) ? raw : [raw];
@@ -248,7 +248,7 @@ function extractChanRefs(obj, rawData) {
   return refs;
 }
 
-function processFrames(eflr, rawData, frames) {
+function processFrames(eflr, frames) {
   let inheritedRefs = []; // carry chanRefs from empty-name "header" objects (Baker Hughes Atlas)
   for (const obj of eflr.objects) {
     if (!obj.name) continue;
@@ -256,13 +256,13 @@ function processFrames(eflr, rawData, frames) {
     if (!obj.name.name) {
       // Empty-name object: Baker Hughes puts CHANNELS values here; the next named object
       // references this frame in FDATA but has no CHANNELS override of its own.
-      const refs = extractChanRefs(obj, rawData);
+      const refs = extractChanRefs(obj);
       if (refs.length > 0) inheritedRefs = refs;
       continue; // no FDATA for empty-name key — do not add to frames
     }
 
     const key = obnameKey(obj.name);
-    let chanRefs = extractChanRefs(obj, rawData);
+    let chanRefs = extractChanRefs(obj);
     if (chanRefs.length === 0 && inheritedRefs.length > 0) chanRefs = inheritedRefs;
     inheritedRefs = [];
 
@@ -296,8 +296,6 @@ function processParameters(eflr, parameters) {
 
 // ── Frame decoder ────────────────────────────────────────────────────────────
 
-const DEPTH_RE    = /^(DEPTH|TDEP|TIME|ETIM|DBTM|MD|TVD|DEPT)$/i;
-const WAVEFORM_RE = /WAVE|WVFM|VDL|WVFT|WVLT|WVFR|DTCO|WF/i;
 
 /**
  * Decode all FDATA blocks for one frame and return typed arrays.
@@ -651,7 +649,7 @@ export class DLISFile {
             case 'FILE-HEADER': processFileHeader(eflr,{fileHeaders});break;
             case 'ORIGIN': processOrigin(eflr,{origins});break;
             case 'CHANNEL': processChannels(eflr,channels);break;
-            case 'FRAME': processFrames(eflr,rec.data,frames);break;
+            case 'FRAME': processFrames(eflr,frames);break;
             case 'PARAMETER': processParameters(eflr,parameters);break;
           }
         }catch(e){warnings.push('Logical file '+group+': metadados não decodificados: '+e.message);}

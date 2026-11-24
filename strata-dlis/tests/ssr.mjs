@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
@@ -16,7 +17,7 @@ try {
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(logs)), 30000);
     const inspect = () => {
-      if (logs.includes("Local:")) {
+      if (stripVTControlCharacters(logs).includes("Local:")) {
         clearTimeout(timer);
         resolve();
       }

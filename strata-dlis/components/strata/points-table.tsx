@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/table";
 import { Trash2 } from "lucide-react";
 import { Pick } from "./controls";
+import type { LogPoint } from "@/lib/dlis/points";
 export function PointsTable({
   points,
   onChange,
 }: {
-  points: any[];
-  onChange: (points: any[]) => void;
+  points: LogPoint[];
+  onChange: (points: LogPoint[]) => void;
 }) {
   const { translate, message } = useI18n();
   const update = (id: string, key: string, value: string) =>
