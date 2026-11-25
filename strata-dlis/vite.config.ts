@@ -22,6 +22,8 @@ function fixVinextRscProxyImports(): Plugin {
 
 const forwardedHost = codespaceHost(process.env);
 export default defineConfig({
+  // O Worker usa estes módulos na primeira leitura. A pré-otimização preserva o arquivo aberto.
+  environments: { client: { optimizeDeps: { include: ["@noble/hashes/sha2.js", "@noble/hashes/utils.js"] } } },
   server: {
     host: forwardedHost ? "0.0.0.0" : "127.0.0.1",
     port: 5173,

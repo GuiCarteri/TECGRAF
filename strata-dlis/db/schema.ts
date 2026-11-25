@@ -46,6 +46,7 @@ export const files = sqliteTable(
   ],
 );
 export const uploads = sqliteTable("uploads", {
+  cancelled: integer("cancelled").notNull().default(0),
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
   objectKey: text("object_key").notNull(),
@@ -152,3 +153,52 @@ export const reports = sqliteTable(
     index("reports_source_hash_idx").on(t.sourceHash),
   ],
 );
+
+// O provedor de desenvolvimento usa o mesmo D1 local que a aplicação.
+export const localAccounts = sqliteTable("local_accounts", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  confirmedAt: text("confirmed_at"),
+});
+export const localSessions = sqliteTable(
+  "local_sessions",
+  {
+    accessHash: text("access_hash").primaryKey(),
+    refreshHash: text("refresh_hash").notNull().unique(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => localAccounts.id, { onDelete: "cascade" }),
+    accessUntil: integer("access_until").notNull(),
+    refreshUntil: integer("refresh_until").notNull(),
+  },
+  (t) => [index("local_sessions_owner_idx").on(t.accountId)],
+);
+export const localMail = sqliteTable(
+  "local_mail",
+  {
+    accountId: text("account_id")
+      .notNull()
+      .references(() => localAccounts.id, { onDelete: "cascade" }),
+    purpose: text("purpose").notNull(),
+    code: text("code").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [uniqueIndex("local_mail_owner_purpose").on(t.accountId, t.purpose)],
+);
+export const authAttempts = sqliteTable(
+  "auth_attempts",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [index("auth_attempts_expiry").on(t.expiresAt)],
+);
+export const catalogIndex = sqliteTable("catalog_index", {
+  fileId: text("file_id")
+    .primaryKey()
+    .references(() => files.id, { onDelete: "cascade" }),
+  summary: text("summary").notNull(),
+});

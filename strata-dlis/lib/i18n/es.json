@@ -112,7 +112,7 @@
   "Aprovar publicação": "Aprobar publicación",
   "EXPLORAR DADOS": "EXPLORAR DATOS",
   "Biblioteca pública": "Biblioteca pública",
-  "Perfis de poços, organizados por fonte. Dados reais, do arquivo à análise.": "Registros de pozos, organizados por fuente. Datos reales, del archivo al análisis.",
+  "Consulte curvas, ferramentas e intervalos de profundidade por fonte.": "Consulta curvas, herramientas e intervalos de profundidad por fuente.",
   "Publicar arquivo": "Publicar archivo",
   "Arquivos publicados": "Archivos publicados",
   "Coleções disponíveis": "Colecciones disponibles",
@@ -531,5 +531,16 @@
   "Apagando…": "Eliminando…",
   "Publicação apagada.": "Publicación eliminada.",
   "Exclusão pendente": "Eliminación pendiente",
-  "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.": "¿Eliminar la publicación permanentemente? Se eliminará el archivo. Se conservarán los análisis, los informes y las exportaciones."
+  "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.": "¿Eliminar la publicación permanentemente? Se eliminará el archivo. Se conservarán los análisis, los informes y las exportaciones.",
+  "Consulte o código no terminal local.": "Consulta el código en tu terminal local.",
+  "Relatório por arquivo": "Informe por archivo",
+  "Próximo arquivo": "Siguiente archivo",
+  "Filtros técnicos": "Filtros técnicos",
+  "Curva": "Curva",
+  "Intervalo de profundidade inválido.": "Intervalo de profundidad no válido.",
+  "Metadados do DLIS": "Metadatos DLIS",
+  "Amostras legíveis": "Muestras legibles",
+  "Criação do arquivo": "Creación del archivo",
+  "Reindexar DLIS": "Reindexar DLIS",
+  "Índice atualizado.": "Índice actualizado."
 }

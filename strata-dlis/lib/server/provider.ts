@@ -23,8 +23,14 @@ export type ProviderResponse = {
   user?: ProviderUser;
 } & ProviderUser;
 const options = { httpOnly: true, sameSite: "lax" as const, path: "/" };
+export function providerKind() {
+  const config = authConfig(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+  if (config.configured) return "supabase";
+  if (import.meta.env.DEV && !config.url && !config.key) return "local";
+  return null;
+}
 export function providerConfigured() {
-  return authConfig(env.SUPABASE_URL, env.SUPABASE_ANON_KEY).configured;
+  return providerKind() !== null;
 }
 export async function providerRequest(
   path: string,
@@ -32,6 +38,10 @@ export async function providerRequest(
   token?: string,
   method?: string,
 ): Promise<ProviderResponse> {
+  if (import.meta.env.DEV && providerKind() === "local") {
+    const { localRequest } = await import("./local-identity");
+    return localRequest(path, body, token, method);
+  }
   if (!providerConfigured()) throw new HttpError("AUTH_NOT_CONFIGURED", 503);
   let response: Response;
   try {
@@ -58,7 +68,7 @@ export async function providerRequest(
     error_code?: string;
   };
   if (!response.ok) {
-    const code = data.code || data.error_code;
+    const code = data.error_code || data.code;
     const mapped: Record<string, string> = {
       invalid_credentials: "AUTH_INVALID_CREDENTIALS",
       email_not_confirmed: "AUTH_EMAIL_UNCONFIRMED",
@@ -85,7 +95,7 @@ export async function providerUser(): Promise<Identity | null> {
     const u = await providerRequest("user", undefined, token);
     if (!u.id || !u.email || !u.email_confirmed_at) return null;
     return {
-      userId: "supabase:" + u.id,
+      userId: providerKind() + ":" + u.id,
       email: u.email,
       displayName: u.user_metadata?.name || u.email,
       fullName: u.user_metadata?.name || null,

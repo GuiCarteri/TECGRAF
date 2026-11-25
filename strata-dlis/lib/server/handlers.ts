@@ -4,10 +4,17 @@ import { readWellAssessment } from "../model/well-assessment";
 import { modelHandler } from "./model-handlers";
 import { validateRegions } from "../dlis/regions";
 import { hasRefresh } from "./provider";
+import { publicCatalog } from "./public-catalog";
 import { authHandler } from "./auth-handlers";
 import { query, bucket, database } from "./db";
 import { HttpError, currentUser, requireUser, sameOrigin } from "./auth";
-import { mayRead, companyMatches, validateHeader } from "../dlis/core.js";
+import {
+  mayRead,
+  companyMatches,
+  validateHeader,
+  catalogTypes,
+  catalogDepthLabel,
+} from "../dlis/core.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 const now = () => new Date().toISOString(),
   uuid = () => crypto.randomUUID();
@@ -32,6 +39,7 @@ type StoredFile = FileJsonColumns & {
   visibility: string;
 };
 type StoredUpload = {
+  cancelled: number;
   object_key: string;
   upload_id: string;
   size: number;
@@ -42,7 +50,34 @@ type StoredUpload = {
 // A publicação aceita metadados de versões anteriores e preserva os campos técnicos da fonte.
 const uploadMetadata = z.looseObject({
   version: z.literal("V1.00"),
+  hash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   warnings: z.array(z.string()).optional(),
+  thumbnail: z
+    .object({
+      frame: z.string().max(512),
+      lf: z.number().int().nonnegative(),
+      channel: z.string().max(255),
+      unit: z.string().max(255),
+      points: z.array(z.tuple([z.number(), z.number()]).nullable()).max(132),
+    })
+    .nullish(),
+  validation: z
+    .array(
+      z.looseObject({
+        lf: z.number().int().nonnegative(),
+        frame: z.string(),
+        ok: z.boolean(),
+        samples: z.number().int().nonnegative().optional(),
+        depthRangeMeters: z
+          .tuple([z.number(), z.number()])
+          .refine(([lo, hi]) => lo <= hi)
+          .nullish(),
+      }),
+    )
+    .optional(),
   logicalFiles: z.array(
     z.looseObject({
       origin: z.looseObject({ company: z.string().nullish() }).nullish(),
@@ -97,10 +132,7 @@ export async function handle(request: Request, path: string[]) {
       return json({ user });
     }
     if (route === "files" && request.method === "GET" && !id) {
-      const r = await query(
-        "SELECT id,well,field,company,collection,run,location,types,depth_label,size,publisher,published_at,status,original_name FROM files WHERE status='validated' AND visibility='public' ORDER BY collection,published_at DESC",
-      ).all<FileJsonColumns>();
-      return json({ files: r.results.map(parseFile) });
+      return json(await publicCatalog(url.searchParams));
     }
     if (route === "files" && id && request.method === "GET") {
       const user = await requireUser();
@@ -121,6 +153,37 @@ export async function handle(request: Request, path: string[]) {
         });
       }
       return json({ file: parseFile(f) });
+    }
+    if (
+      route === "files" &&
+      id &&
+      action === "reindex" &&
+      request.method === "POST"
+    ) {
+      await requireUser(["admin"]);
+      const { metadata } = await body(request);
+      const parsed = uploadMetadata.safeParse(metadata);
+      if (
+        !parsed.success ||
+        !parsed.data.hash ||
+        !parsed.data.validation?.some((v) => v.ok)
+      )
+        throw new HttpError("Metadados de reindexação inválidos.");
+      const m = parsed.data;
+      const saved = await query(
+        "UPDATE files SET metadata=?,types=?,depth_label=? WHERE id=? AND hash=? AND status!='deleting'",
+        JSON.stringify(m),
+        JSON.stringify(catalogTypes(m.logicalFiles)),
+        catalogDepthLabel(m.validation),
+        id,
+        m.hash,
+      ).run();
+      if (!saved.meta.changes)
+        throw new HttpError(
+          "Arquivo não encontrado ou SHA-256 divergente.",
+          409,
+        );
+      return json({ ok: true });
     }
     if (route === "files" && id && !action && request.method === "DELETE") {
       const user = await requireUser();
@@ -161,17 +224,22 @@ export async function handle(request: Request, path: string[]) {
       const upload = await bucket().createMultipartUpload(key, {
         httpMetadata: { contentType: "application/octet-stream" },
       });
-      await query(
-        "INSERT INTO uploads (id,owner_id,object_key,upload_id,name,size,hash,created_at) VALUES (?,?,?,?,?,?,?,?)",
-        uid,
-        user.id,
-        key,
-        upload.uploadId,
-        str(b.name),
-        b.size,
-        b.hash,
-        now(),
-      ).run();
+      try {
+        await query(
+          "INSERT INTO uploads (id,owner_id,object_key,upload_id,name,size,hash,created_at) VALUES (?,?,?,?,?,?,?,?)",
+          uid,
+          user.id,
+          key,
+          upload.uploadId,
+          str(b.name),
+          b.size,
+          b.hash,
+          now(),
+        ).run();
+      } catch (error) {
+        await upload.abort().catch(() => {});
+        throw error;
+      }
       return json({ id: uid });
     }
     if (route === "uploads" && id) {
@@ -181,16 +249,38 @@ export async function handle(request: Request, path: string[]) {
         id,
         user.id,
       ).first<StoredUpload>();
-      if (!row) throw new HttpError("Envio não encontrado.", 404);
+      if (!row) {
+        if (request.method === "POST" && action === "complete") {
+          const saved = await query(
+            "SELECT id,status FROM files WHERE id=? AND owner_id=?",
+            id,
+            user.id,
+          ).first();
+          if (saved) return json(saved);
+        }
+        throw new HttpError("Envio não encontrado.", 404);
+      }
       const upload = bucket().resumeMultipartUpload(
         row.object_key,
         row.upload_id,
       );
       if (request.method === "DELETE") {
-        await upload.abort().catch(() => {});
-        await query("DELETE FROM uploads WHERE id=?", id).run();
+        const claim = await query(
+          "UPDATE uploads SET cancelled=1 WHERE id=? AND NOT EXISTS(SELECT 1 FROM files WHERE object_key=?)",
+          id,
+          row.object_key,
+        ).run();
+        if (claim.meta.changes) {
+          await upload.abort().catch(() => {});
+          await bucket().delete(row.object_key);
+          await query(
+            "DELETE FROM uploads WHERE id=? AND cancelled=1",
+            id,
+          ).run();
+        }
         return json({ ok: true });
       }
+      if (row.cancelled) throw new HttpError("Envio interrompido.", 410);
       if (request.method === "PUT" && action === "part") {
         const n = Number(url.searchParams.get("n"));
         if (!Number.isInteger(n) || n < 1 || n > 64)
@@ -218,6 +308,13 @@ export async function handle(request: Request, path: string[]) {
           b.authorized !== true ||
           b.confirmed !== true ||
           !parsed.success ||
+          !parsed.data.logicalFiles.some((lf) =>
+            lf.frames.some((f) => f.channels.length > 0),
+          ) ||
+          (parsed.data.validation &&
+            !parsed.data.validation.some(
+              (v) => v.ok && (v.samples ?? 0) > 0,
+            )) ||
           !str(b.collection) ||
           !str(b.company)
         )
@@ -230,8 +327,16 @@ export async function handle(request: Request, path: string[]) {
         )
           throw new HttpError("Envio incompleto.");
         const m = parsed.data;
+        if (m.hash && m.hash !== row.hash)
+          throw new HttpError("SHA-256 divergente: o arquivo não foi aceito.");
         const alreadyStored = await bucket().head(row.object_key);
-        const object = alreadyStored || (await upload.complete(b.parts));
+        const object =
+          alreadyStored ||
+          (await upload.complete(b.parts).catch(async (error) => {
+            const completed = await bucket().head(row.object_key);
+            if (!completed) throw error;
+            return completed;
+          }));
         const downloaded = await bucket().get(row.object_key);
         if (!downloaded || object.size !== row.size)
           throw new HttpError("Arquivo incompleto.");
@@ -257,56 +362,75 @@ export async function handle(request: Request, path: string[]) {
           origins.length > 0 &&
           origins.every((c) => companyMatches(c, b.company));
         const status = match && !m.warnings?.length ? "pending" : "review";
-        const types = [
-          ...new Set(
-            m.logicalFiles
-              .flatMap((lf) =>
-                lf.frames.flatMap((f) => f.channels.map((c) => c.kind)),
-              )
-              .filter((t) => ["CBL", "VDL", "USIT", "GR"].includes(t ?? "")),
-          ),
-        ];
+        const types = catalogTypes(m.logicalFiles);
         try {
-          await query(
-            "INSERT INTO files (id,hash,owner_id,publisher,original_name,size,object_key,well,field,company,collection,run,location,types,depth_label,metadata,status,visibility,authorization,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            id,
+          const [inserted] = await database().batch([
+            query(
+              "INSERT INTO files (id,hash,owner_id,publisher,original_name,size,object_key,well,field,company,collection,run,location,types,depth_label,metadata,status,visibility,authorization,created_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM uploads WHERE id=? AND cancelled=0)",
+              id,
+              actual,
+              user.id,
+              user.name,
+              row.name,
+              row.size,
+              row.object_key,
+              str(b.well),
+              str(b.field),
+              str(b.company),
+              str(b.collection),
+              str(b.run),
+              ["onshore", "offshore"].includes(b.location)
+                ? b.location
+                : "unknown",
+              JSON.stringify(types),
+              m.validation
+                ? catalogDepthLabel(m.validation)
+                : str(b.depthLabel),
+              JSON.stringify(m),
+              status,
+              ["private", "unlisted"].includes(b.visibility)
+                ? b.visibility
+                : "public",
+              1,
+              now(),
+              id,
+            ),
+            query("DELETE FROM uploads WHERE id=? AND cancelled=0", id),
+          ]);
+          if (!inserted.meta.changes) {
+            const saved = await query(
+              "SELECT id,status FROM files WHERE id=? AND hash=?",
+              id,
+              actual,
+            ).first();
+            if (saved) return json(saved);
+            await bucket().delete(row.object_key);
+            throw new HttpError("Envio interrompido.", 410);
+          }
+        } catch (error) {
+          const existing = await query(
+            "SELECT id,hash,status,object_key FROM files WHERE hash=? OR id=? ORDER BY id=? DESC LIMIT 1",
             actual,
-            user.id,
-            user.name,
-            row.name,
-            row.size,
-            row.object_key,
-            str(b.well),
-            str(b.field),
-            str(b.company),
-            str(b.collection),
-            str(b.run),
-            ["onshore", "offshore"].includes(b.location)
-              ? b.location
-              : "unknown",
-            JSON.stringify(types),
-            str(b.depthLabel),
-            JSON.stringify(m),
-            status,
-            ["private", "unlisted"].includes(b.visibility)
-              ? b.visibility
-              : "public",
-            1,
-            now(),
-          ).run();
-        } catch {
-          // A concurrent completion may already have registered these bytes.
-          const registered = await query(
-            "SELECT id FROM files WHERE object_key=?",
-            row.object_key,
-          ).first();
-          if (!registered) await bucket().delete(row.object_key);
+            id,
+            id,
+          ).first<{
+            id: string;
+            hash: string;
+            status: string;
+            object_key: string;
+          }>();
+          if (!existing) throw error;
+          if (existing.id === id && existing.hash === actual)
+            return json({ id, status: existing.status });
+          if (existing.object_key !== row.object_key) {
+            await bucket().delete(row.object_key);
+            await query("DELETE FROM uploads WHERE id=?", id).run();
+          }
           throw new HttpError(
-            "Arquivo duplicado ou publicação não pôde ser registrada.",
+            "Este arquivo já foi enviado (SHA-256 idêntico).",
             409,
           );
         }
-        await query("DELETE FROM uploads WHERE id=?", id).run();
         return json({ id, status });
       }
     }

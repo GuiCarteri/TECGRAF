@@ -22,6 +22,8 @@ export interface OriginMetadata {
   wellName?: string;
   fieldName?: string;
   company?: string;
+  creationTime?: string | null;
+  creationTimeZone?: string | null;
   fileSetName?: string;
   runNumber?: number | string | null;
 }
@@ -34,6 +36,13 @@ export interface DlisMetadata {
     index: number;
     id: string;
     origin: OriginMetadata | null;
+    origins?: OriginMetadata[];
+    tools?: {
+      name: string;
+      key: string;
+      genericName: string;
+      trademarkName: string;
+    }[];
     parameters: {
       name: string;
       longName: unknown;
@@ -66,4 +75,16 @@ export interface CalibrationForm {
   source: string;
   goodMax: string;
   badMin: string;
+}
+
+export interface CurveThumbnail {
+  frame: string;
+  lf: number;
+  channel: string;
+  unit: string;
+  points: ([number, number] | null)[];
+}
+export interface InspectedDlis extends DlisMetadata {
+  validation: FrameValidation[];
+  thumbnail: CurveThumbnail | null;
 }

@@ -76,7 +76,7 @@ if (compatible) {
     );
   } else {
     console.log(
-      "INFO  Modo público local. Para habilitar contas, configure SUPABASE_URL e SUPABASE_ANON_KEY em strata-dlis/.dev.vars.",
+      "INFO  Contas e catálogo locais disponíveis. Para usar o Supabase, configure ambas as variáveis em strata-dlis/.dev.vars.",
     );
   }
 }

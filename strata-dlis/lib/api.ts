@@ -52,6 +52,17 @@ export async function api<T = Record<string, unknown>>(
     );
   if (!data || typeof data !== "object" || Array.isArray(data))
     throw new Error("Dados inválidos.");
+  if (
+    typeof window !== "undefined" &&
+    window.BroadcastChannel &&
+    (((path === "admin/files" || path.endsWith("/reindex")) &&
+      init?.method === "POST") ||
+      (path.startsWith("files/") && init?.method === "DELETE"))
+  ) {
+    const channel = new BroadcastChannel("strata-catalog");
+    channel.postMessage("refresh");
+    channel.close();
+  }
   return data as T;
 }
 export const post = <T = Record<string, unknown>>(

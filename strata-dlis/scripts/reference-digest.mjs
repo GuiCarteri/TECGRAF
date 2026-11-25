@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { DLISFile } from "../lib/vendor/dlis-parser/index.js";
+import { inspectFrames } from "../lib/dlis/inspect.js";
+import { defaultDepthChannel } from "../lib/dlis/core.js";
 const start = performance.now();
 const parsed = await DLISFile.fromFile(process.argv[2]);
 const channels = [];
@@ -24,9 +26,30 @@ for (const [lf, logical] of parsed.logicalFiles.entries())
       });
     }
   }
+const catalog = inspectFrames(parsed);
 console.log(
   JSON.stringify({
     channels,
+    catalog: {
+      origins: catalog.logicalFiles.map((l) =>
+        l.origins.map((o) => [
+          o.wellName,
+          o.fieldName,
+          o.creationTime?.replace(/Z$/, "") ?? null,
+        ]),
+      ),
+      tools: catalog.logicalFiles.map((l) =>
+        l.tools.map((t) => [t.name, t.genericName, t.trademarkName]),
+      ),
+      frames: catalog.validation.map((v) => ({
+        ...v,
+        depth: defaultDepthChannel(
+          catalog.logicalFiles[v.lf].frames.find((f) => f.key === v.frame),
+        ),
+      })),
+      thumbnail: catalog.thumbnail,
+      metadata_bytes: Buffer.byteLength(JSON.stringify(catalog)),
+    },
     warnings: parsed.warnings,
     elapsed_ms: Math.round(performance.now() - start),
     peak_rss_mb: Math.round(process.resourceUsage().maxRSS / 1024),

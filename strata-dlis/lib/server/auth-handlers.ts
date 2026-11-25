@@ -4,12 +4,14 @@ import { safeNext } from "../auth-policy";
 import { cookies } from "next/headers";
 import {
   providerConfigured,
+  providerKind,
   providerRequest,
   writeSession,
   clearSession,
   refreshSession,
 } from "./provider";
 import { sameOrigin, HttpError } from "./auth";
+import { limitAuth, windowSeconds } from "./auth-limit";
 export async function authHandler(request: Request, action: string) {
   const native =
     action === "login" &&
@@ -19,7 +21,7 @@ export async function authHandler(request: Request, action: string) {
   try {
     if (action === "config" && request.method === "GET")
       return Response.json(
-        { configured: providerConfigured() },
+        { configured: providerConfigured(), provider: providerKind() },
         { headers: { "Cache-Control": "no-store" } },
       );
     if (!providerConfigured()) throw new HttpError("AUTH_NOT_CONFIGURED", 503);
@@ -32,8 +34,16 @@ export async function authHandler(request: Request, action: string) {
       return Response.json({ ok: true });
     }
     if (action === "logout") {
-      const token = (await cookies()).get("strata_access")?.value;
-      if (token) await providerRequest("logout", {}, token).catch(() => {});
+      const jar = await cookies();
+      const token = jar.get("strata_access")?.value;
+      if (providerKind() === "local") {
+        await providerRequest(
+          "logout",
+          { refresh_token: jar.get("strata_refresh")?.value },
+          token,
+        );
+      } else if (token)
+        await providerRequest("logout", {}, token).catch(() => {});
       await clearSession();
       return Response.json({ ok: true });
     }
@@ -49,7 +59,9 @@ export async function authHandler(request: Request, action: string) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
       throw new HttpError("Informe um e-mail válido.");
     if (
-      (action === "login" || action === "register" || action === "change-password") &&
+      (action === "login" ||
+        action === "register" ||
+        action === "change-password") &&
       !validPasswordLength(action, b.password)
     )
       throw new HttpError(
@@ -57,6 +69,7 @@ export async function authHandler(request: Request, action: string) {
           ? "AUTH_INVALID_CREDENTIALS"
           : "Use uma senha de 8 a 200 caracteres.",
       );
+    await limitAuth(request, action, email);
     if (action === "login") {
       await writeSession(
         await providerRequest("token?grant_type=password", {
@@ -149,7 +162,12 @@ export async function authHandler(request: Request, action: string) {
       { error: e instanceof HttpError ? e.message : "AUTH_FAILED" },
       {
         status: e instanceof HttpError ? e.status : 400,
-        headers: { "Cache-Control": "no-store" },
+        headers: {
+          "Cache-Control": "no-store",
+          ...(e instanceof HttpError && e.status === 429
+            ? { "Retry-After": String(windowSeconds) }
+            : {}),
+        },
       },
     );
   }

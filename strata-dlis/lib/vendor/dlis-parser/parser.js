@@ -179,6 +179,8 @@ function processFileHeader(eflr, out) {
 
 function processOrigin(eflr, out) {
   for (const obj of eflr.objects) {
+    const date = getAttr(obj, 'CREATION-TIME');
+    const zone = date?.rp66Zone;
     out.origins.push({
       key:          obj.name ? obnameKey(obj.name) : '',
       fileId:       getAttr(obj, 'FILE-ID') || '',
@@ -188,7 +190,8 @@ function processOrigin(eflr, out) {
       fileType:     getAttr(obj, 'FILE-TYPE') || '',
       product:      getAttr(obj, 'PRODUCT') || '',
       version:      getAttr(obj, 'VERSION') || '',
-      creationTime: getAttr(obj, 'CREATION-TIME'),   // Date | null
+      creationTime: date instanceof Date ? date.toISOString().replace(/Z$/, zone === 2 ? 'Z' : '') : null,
+      creationTimeZone: ['local-standard', 'local-daylight', 'GMT'][zone] || null,
       orderNumber:  getAttr(obj, 'ORDER-NUMBER') || '',
       descentNumber:getAttr(obj, 'DESCENT-NUMBER') ?? 1,
       runNumber:    getAttr(obj, 'RUN-NUMBER') ?? null,
@@ -342,7 +345,7 @@ function decodeFrame(frameMeta, channels, iflrBlocks, selectedNames) {
     // UVARI frame number takes 1-4 bytes; use 1 for count estimation
     if (bytesPerFrame > 0) totalFrames += Math.max(0, Math.floor(bodyLen / (1 + bytesPerFrame)));
   }
-  if (totalFrames === 0) totalFrames = 256; // safe initial allocation
+  if (totalFrames === 0) throw new Error('Frame truncado ou sem amostras completas.');
 
   // ── Allocate output arrays ────────────────────────────────────
   const buffers = {};
@@ -551,9 +554,11 @@ export class Frame {
 
 export class LogicalFile {
   /** @internal */
-  constructor({ id, origin, channels, frames, parameters, iflrMap }) {
+  constructor({ id, origin, origins, tools, channels, frames, parameters, iflrMap }) {
     this.id         = id;
     this.origin     = origin || null;
+    this.origins = origins;
+    this.tools = tools;
     this._channels  = channels;  // Map<key, ChannelInfo>
     this._frameMeta = frames;    // Map<key, frameMeta>
     this._iflrMap   = iflrMap;   // Map<key, [{data, bodyOffset}]>
@@ -641,13 +646,20 @@ export class DLISFile {
     const logicalFiles=[];
     const groupIds=[...new Set(eflrRecords.map(r=>r.logicalIndex))];
     for(const group of groupIds){
-      const channels=new Map(), frames=new Map(), parameters=[], origins=[], fileHeaders=[];
+      const channels=new Map(), frames=new Map(), parameters=[], origins=[], tools=[], fileHeaders=[];
       for(const rec of eflrRecords.filter(r=>r.logicalIndex===group)){
         try{
           const eflr=parseEFLR(rec.data), st=eflr.type.toUpperCase();
           switch(st){
             case 'FILE-HEADER': processFileHeader(eflr,{fileHeaders});break;
             case 'ORIGIN': processOrigin(eflr,{origins});break;
+            case 'TOOL':
+              for (const obj of eflr.objects) if (obj.name) tools.push({
+                key: obnameKey(obj.name), name: obj.name.name,
+                genericName: getAttr(obj, 'GENERIC-NAME') || '',
+                trademarkName: getAttr(obj, 'TRADEMARK-NAME') || '',
+              });
+              break;
             case 'CHANNEL': processChannels(eflr,channels);break;
             case 'FRAME': processFrames(eflr,frames);break;
             case 'PARAMETER': processParameters(eflr,parameters);break;
@@ -657,7 +669,7 @@ export class DLISFile {
       const localMap=new Map();
       for(const [key,blocks] of iflrMap) if(key.startsWith(group+'|')) localMap.set(key.slice(String(group).length+1),blocks);
       const origin=origins[0]||null;
-      logicalFiles.push(new LogicalFile({id:fileHeaders[0]?.id||'',origin,channels,frames,parameters,iflrMap:localMap}));
+      logicalFiles.push(new LogicalFile({id:fileHeaders[0]?.id||'',origin,origins,tools,channels,frames,parameters,iflrMap:localMap}));
     }
 
     return new DLISFile({ sul, logicalFiles, warnings });

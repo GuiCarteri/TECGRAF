@@ -133,17 +133,20 @@ export class BinaryReader {
   }
 
   /**
-   * DTIME — 8-byte date-time.
-   * Year offset is +1900; upper nibble of month byte may encode timezone (ignored).
-   * @returns {Date}
+   * RP66 B.21. Preserva o indicativo de fuso junto aos campos de calendário.
+   * @returns {(Date & {rp66Zone?: number}) | null}
    */
   dtime() {
     const yr = this.u8();
-    const mo = this.u8() & 0x0F; // lower nibble = month 1-12
+    const zoneMonth = this.u8();
+    const mo = zoneMonth & 0x0F; // lower nibble = month 1-12
     const dy = this.u8();
     const h  = this.u8(), mi = this.u8(), s  = this.u8();
     const ms = this.u16();
-    return new Date(Date.UTC(1900 + yr, mo - 1, dy, h, mi, s, ms));
+    const date = new Date(Date.UTC(1900 + yr, mo - 1, dy, h, mi, s, ms));
+    if (date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== dy || h > 23 || mi > 59 || s > 59 || ms > 999) return null;
+    date.rp66Zone = zoneMonth >> 4;
+    return date;
   }
 
   /**

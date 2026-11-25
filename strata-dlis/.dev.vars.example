@@ -1,5 +1,5 @@
-# Catálogo público, D1 e R2 locais funcionam com os valores vazios.
-# Para testar contas, use a URL HTTPS e a chave pública do seu projeto Supabase.
+# Contas de desenvolvimento, catálogo, D1 e R2 locais funcionam com os valores vazios.
+# Para usar contas Supabase, use a URL HTTPS e a chave pública do seu projeto Supabase.
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
 # Opcional. UUIDs confirmados para cadastrar os primeiros administradores.

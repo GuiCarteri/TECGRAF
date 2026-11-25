@@ -112,7 +112,7 @@
   "Aprovar publicação": "Approve publication",
   "EXPLORAR DADOS": "EXPLORE DATA",
   "Biblioteca pública": "Public library",
-  "Perfis de poços, organizados por fonte. Dados reais, do arquivo à análise.": "Well logs, organized by source. Real data, from file to analysis.",
+  "Consulte curvas, ferramentas e intervalos de profundidade por fonte.": "Explore curves, tools and depth intervals by source.",
   "Publicar arquivo": "Publish file",
   "Arquivos publicados": "Published files",
   "Coleções disponíveis": "Available collections",
@@ -531,5 +531,16 @@
   "Apagando…": "Deleting…",
   "Publicação apagada.": "Publication deleted.",
   "Exclusão pendente": "Deletion pending",
-  "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.": "Permanently delete this publication? The file will be removed. Analyses, reports and exports will be preserved."
+  "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.": "Permanently delete this publication? The file will be removed. Analyses, reports and exports will be preserved.",
+  "Consulte o código no terminal local.": "Read the code in your local terminal.",
+  "Relatório por arquivo": "File report",
+  "Próximo arquivo": "Next file",
+  "Filtros técnicos": "Technical filters",
+  "Curva": "Curve",
+  "Intervalo de profundidade inválido.": "Invalid depth interval.",
+  "Metadados do DLIS": "DLIS metadata",
+  "Amostras legíveis": "Readable samples",
+  "Criação do arquivo": "File creation",
+  "Reindexar DLIS": "Reindex DLIS",
+  "Índice atualizado.": "Index updated."
 }

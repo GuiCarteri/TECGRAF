@@ -25,7 +25,7 @@ const u16 = (x) => {
   return b;
 };
 const val = (rc, x) =>
-  rc === 19 || rc === 27
+  rc === 21 ? Buffer.from(x) : rc === 19 || rc === 27
     ? id(x)
     : rc === 20
       ? cat(uv(Buffer.byteLength(x)), Buffer.from(x))
@@ -68,7 +68,7 @@ export function record(body, attr = 0x80, type = 0) {
   );
   return cat(u16(segment.length + 4), [255, 1], segment);
 }
-export function makeFixture({ rows = 1201, encrypted = false, wellName = "Synthetic QA well" } = {}) {
+export function makeFixture({ rows = 1201, encrypted = false, catalogDetails = false, wellName = "Synthetic QA well" } = {}) {
   const channels = [
     ["TDEP", "m", 1],
     ["DEPTH", "m", 1],
@@ -89,8 +89,9 @@ export function makeFixture({ rows = 1201, encrypted = false, wellName = "Synthe
         [
           ["WELL-NAME", 20],
           ["COMPANY", 20],
+          ...(catalogDetails ? [["FIELD-NAME",20], ["CREATION-TIME",21]] : []),
         ],
-        [["O", [wellName, "Test only"]]],
+        [["O", [wellName, "Test only", ...(catalogDetails ? ["Delta sintético", [126, 0x23, 15, 12, 30, 0, 0, 0]] : [])]]],
       ),
       0x80,
       1,
@@ -122,6 +123,7 @@ export function makeFixture({ rows = 1201, encrypted = false, wellName = "Synthe
       4,
     ),
   ];
+  if (catalogDetails) records.push(record(set("TOOL", [["GENERIC-NAME",20],["TRADEMARK-NAME",20]], [["QA-GR",["Gamma Ray","Demo Sonde"]]]),0x80,7));
   if (encrypted)
     records.push(
       record(Buffer.from([4, 2, 8, 9, 9, 3, 1, 2, 3, 4, 5, 6]), 0x90, 132),

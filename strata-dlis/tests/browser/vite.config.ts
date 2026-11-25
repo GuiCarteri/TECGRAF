@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   plugins: [react()],
+  optimizeDeps: { include: ["@noble/hashes/sha2.js", "@noble/hashes/utils.js"] },
   // A aplicação usa o link do Vinext. O Vite isolado não injeta as variáveis do roteador.
   define: { "process.env": "{}" },
   resolve: {

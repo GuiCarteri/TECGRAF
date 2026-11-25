@@ -384,7 +384,7 @@ try {
   await storage.put("dlis/" + duplicateId, duplicateBytes);
   const completed = await call("uploads/" + duplicateId + "/complete", "POST", {
     authorized: true, confirmed: true, collection: "Test", company: "Test",
-    metadata: { version: "V1.00", logicalFiles: [] }, parts: [{ partNumber: 1, etag: "fixture" }],
+    metadata: { version: "V1.00", logicalFiles: [{frames:[{channels:[{name:"GR",kind:"GR"}]}]}] }, parts: [{ partNumber: 1, etag: "fixture" }],
   }, "reader");
   assert.equal(completed.status, 409);
   assert.ok(await storage.head("dlis/" + duplicateId));

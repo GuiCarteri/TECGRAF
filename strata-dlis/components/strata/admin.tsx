@@ -21,7 +21,8 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import type { PublicationFile, UserProfile } from "@/lib/api-types";
-import { api, post } from "@/lib/api";
+import { DlisClient } from "@/lib/dlis/client";
+import { api, post, authenticatedFetch } from "@/lib/api";
 import { Pick } from "./controls";
 import { DeletePublication } from "./delete-publication";
 export function Admin() {
@@ -34,6 +35,7 @@ export function Admin() {
     [note, setNote] = useState(""),
     [collection, setCollection] = useState(""),
     [checked, setChecked] = useState(false),
+    [indexProgress, setIndexProgress] = useState(""),
     [saving, setSaving] = useState(false);
   const load = () =>
     Promise.all([
@@ -57,6 +59,38 @@ export function Admin() {
     } catch (error) {
       const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
       toast.error(message(reason));
+    }
+  }
+  async function reindex() {
+    if (!review || saving) return;
+    setSaving(true);
+    setIndexProgress(translate("Lendo estrutura e metadados do DLIS…"));
+    const worker = new DlisClient((step, percent) =>
+      setIndexProgress(
+        message(step) + (percent === undefined ? "" : " " + percent + "%"),
+      ),
+    );
+    try {
+      const path = "files/" + review.id;
+      const response = await authenticatedFetch("/api/" + path + "/content");
+      if (!response.ok) throw Error("Arquivo indisponível.");
+      const metadata = await worker.inspect(
+        new File([await response.blob()], review.original_name),
+      );
+      await post(path + "/reindex", { metadata });
+      setReview((current) =>
+        current?.id === review.id ? { ...current, metadata } : current,
+      );
+      await load();
+      toast.success(translate("Índice atualizado."));
+    } catch (error) {
+      toast.error(
+        message(error instanceof Error ? error.message : "UNKNOWN_ERROR"),
+      );
+    } finally {
+      worker.destroy();
+      setIndexProgress("");
+      setSaving(false);
     }
   }
   async function decide(status: string) {
@@ -289,6 +323,15 @@ export function Admin() {
                 {translate("Abrir arquivo real no visualizador")}
                 <ArrowUpRight size={16} />
               </a>
+              <button
+                type="button"
+                className="button"
+                disabled={saving}
+                onClick={reindex}
+              >
+                {translate("Reindexar DLIS")}
+              </button>
+              {indexProgress && <p role="status">{indexProgress}</p>}
               <label className="form-field">
                 {translate("Coleção / fonte")}
                 <input

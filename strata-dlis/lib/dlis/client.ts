@@ -1,5 +1,5 @@
 import DlisWorker from "../../workers/dlis.worker.ts?worker";
-import type { DecodedFrame, DlisMetadata } from "./types";
+import type { DecodedFrame, DlisMetadata, InspectedDlis } from "./types";
 
 type WorkerReply = DlisMetadata | DecodedFrame;
 
@@ -11,11 +11,11 @@ export class DlisClient {
     { resolve: (value: WorkerReply) => void; reject: (error: Error) => void }
   >();
 
-  constructor(onProgress?: (phase: string) => void) {
+  constructor(onProgress?: (phase: string, percent?: number) => void) {
     this.worker = new DlisWorker();
     this.worker.onmessage = ({ data }) => {
       if (data.progress) {
-        onProgress?.(data.progress);
+        onProgress?.(data.progress, data.percent);
         return;
       }
       const request = this.pending.get(data.id);
@@ -36,6 +36,10 @@ export class DlisClient {
     this.pending.clear();
   }
 
+  private request(
+    type: "inspect",
+    data: { file: File },
+  ): Promise<InspectedDlis>;
   private request(
     type: "parse",
     data: { buffer: ArrayBuffer },
@@ -60,6 +64,10 @@ export class DlisClient {
         reject(error);
       }
     });
+  }
+
+  inspect(file: File) {
+    return this.request("inspect", { file });
   }
 
   async parse(file: File) {

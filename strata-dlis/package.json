@@ -18,8 +18,9 @@
     "typecheck": "tsc --noEmit",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "deploy": "node scripts/check-deploy.mjs && wrangler deploy --config dist/server/wrangler.json",
-    "test:database": "python3 tests/database.py && python3 tests/migration.py && python3 tests/model-database.py",
+    "test:database": "python3 tests/database.py && python3 tests/migration.py && python3 tests/model-database.py && python3 tests/catalog-migration.py",
     "test:browser:serve": "vite --config tests/browser/vite.config.ts",
+    "test:phase2": "node tests/phase2-browser.mjs",
     "test:browser": "node tests/run-browser.mjs",
     "test:ssr": "node tests/ssr.mjs",
     "test:browser:scientific": "node tests/run-browser.mjs tests/scientific-browser.mjs",
@@ -34,6 +35,7 @@
     "predev": "npm run setup",
     "preseed": "npm run setup",
     "seed": "node scripts/seed.mjs",
+    "local": "node scripts/local.mjs",
     "doctor": "node scripts/doctor.mjs",
     "test:seed": "node tests/seed.mjs"
   },

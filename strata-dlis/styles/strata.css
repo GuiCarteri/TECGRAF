@@ -1886,3 +1886,14 @@ html[lang="zh-CN"] body { font-family: Inter, "Noto Sans SC", "Microsoft YaHei",
 .analytics-rail { background: var(--accent); height: .4rem; margin-top: .25rem; border-radius: .2rem; overflow: hidden; }
 .analytics-rail span { display: block; height: 100%; background: var(--accent-foreground); }
 .catalog-analytics > p { margin-top: 1rem; }
+
+.technical-filters,.catalog-details { margin: .8rem 0; }
+.technical-filters summary,.catalog-details summary { cursor:pointer; font-weight:600; }
+.technical-filters label { margin-top:.65rem; }
+.curve-thumbnail { margin:.7rem 0; color:var(--primary, #176e67); display:flex; align-items:center; gap:1rem; }
+.curve-thumbnail svg { width:8rem; height:4.6rem; border:1px solid currentColor; border-radius:.35rem; }
+.curve-thumbnail figcaption { font-size:.8rem; font-weight:600; }
+.catalog-details dd { overflow-wrap:anywhere; }
+
+.file-card .catalog-details dl div { display:grid; grid-template-columns:minmax(5.5rem,36%) minmax(0,1fr); gap:.5rem; align-items:baseline; }
+.file-card .catalog-details dd { text-align:left; }

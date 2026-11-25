@@ -20,7 +20,7 @@ if (
 ) {
   console.log(
     (await setupEnvironment(fileURLToPath(new URL("../", import.meta.url))))
-      ? ".dev.vars criado. O catálogo local está disponível. Para testar contas, configure o Supabase."
+      ? ".dev.vars criado. O catálogo e as contas de desenvolvimento estão disponíveis."
       : ".dev.vars já existe e foi preservado.",
   );
 }

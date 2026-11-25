@@ -188,6 +188,8 @@ export function extractMetadata(dlis) {
       index: i,
       id: lf.id,
       origin: lf.origin,
+      origins: lf.origins,
+      tools: lf.tools,
       parameters: lf.parameters,
       frames: [...lf.frames.values()].map((f) => ({
         key: f.key,
@@ -291,4 +293,27 @@ export function boundedInterval(from, to, full) {
   const span = Math.min(extent, Math.max(to - from, extent / 1e6));
   const start = Math.max(full[0], Math.min(from, full[1] - span));
   return [start, start + span];
+}
+
+export function catalogTypes(logicalFiles) {
+  const kinds = logicalFiles.flatMap((lf) =>
+    lf.frames.flatMap((frame) => frame.channels.map((channel) => channel.kind)),
+  );
+  return [
+    ...new Set(
+      kinds.filter((kind) => ["CBL", "VDL", "USIT", "GR"].includes(kind)),
+    ),
+  ];
+}
+export function catalogDepthLabel(validation, digits = 3) {
+  let min = Infinity,
+    max = -Infinity;
+  for (const item of validation) {
+    if (!item.ok || !item.depthRangeMeters) continue;
+    min = Math.min(min, item.depthRangeMeters[0]);
+    max = Math.max(max, item.depthRangeMeters[1]);
+  }
+  return Number.isFinite(min) && Number.isFinite(max)
+    ? min.toFixed(digits) + "–" + max.toFixed(digits) + " m"
+    : "";
 }

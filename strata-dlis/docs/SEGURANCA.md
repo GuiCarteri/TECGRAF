@@ -5,7 +5,7 @@ Nenhum chatbot, SDK de IA, deploy ou publicação de DLIS foi feito nesta atuali
 | Ação | Processamento/destino |
 |---|---|
 | Abrir arquivo local | Bytes/metadados/arrays/hash no navegador/Web Worker. Sem upload automático. |
-| Login/cadastro/recuperação | API STRATA → Supabase Auth configurado pelo operador. Cookies HttpOnly, SameSite=Lax, Secure sob HTTPS. |
+| Login/cadastro/recuperação | API STRATA e Supabase no build. No Vite sem configuração, o D1 local guarda contas com Argon2id, sessões com tokens opacos indexados por hash e uma caixa de códigos acessível pelo terminal. Cookies HttpOnly, SameSite=Lax, Secure sob HTTPS. |
 | Habilitar histórico/sincronização | Hash/nome/ID e consultas de análises → API/D1. Inicialmente desligado. |
 | Salvar análise | Pontos, valores, observações e identificadores → D1 por ação explícita; também podem ser confidenciais. |
 | Exportar | Downloads locais; registro na API apenas com sincronização habilitada. |
@@ -25,7 +25,7 @@ Atualizados Next/eslint-config-next 16.4.1, React/RSC 19.2.8, Vite 8.1.6, SheetJ
 
 ## Institucional / MCP futuro
 
-Para execução integral interna, adaptar banco/identidade/armazenamento em `lib/server/db.ts`, `provider.ts`, `session.ts` e bindings, preservando autorização, hashes e titularidade. A aplicação atual completa ainda usa D1/R2/Supabase; não é integralmente offline.
+Para execução integral interna, adaptar banco/identidade/armazenamento em `lib/server/db.ts`, `provider.ts`, `session.ts` e bindings, preservando autorização, hashes e titularidade. O build de produção usa D1/R2/Supabase; não é integralmente offline.
 
 Nenhum servidor MCP foi implementado. Futuras funções `catalog.list/describe` e `analysis.list/describe` devem consultar resultados já processados com identidade do usuário, escopo de empresa/projeto, limites e auditoria. Modelo não ganha privilégios de administrador, shell/SQL livre ou acesso automático ao acervo.
 

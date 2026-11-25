@@ -20,30 +20,25 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import type { UserProfile } from "@/lib/api-types";
-import type {
-  DlisMetadata,
-  FrameValidation,
-  OriginMetadata,
-} from "@/lib/dlis/types";
+import type { InspectedDlis, OriginMetadata } from "@/lib/dlis/types";
 import { api, post, formatBytes } from "@/lib/api";
 import { DlisClient } from "@/lib/dlis/client";
 import {
   companyMatches,
+  catalogDepthLabel,
   isDlisName,
   mayPublish,
-  detectChannel,
-  metersFactor,
-  numericRange,
 } from "@/lib/dlis/core.js";
+import { Thumbnail } from "./thumbnail";
 import { Pick } from "./controls";
 export function Publication() {
   const { translate, message, locale } = useI18n();
   const [user, setUser] = useState<UserProfile | null>(null),
     [accountLoaded, setAccountLoaded] = useState(false),
     [file, setFile] = useState<File | null>(null),
-    [meta, setMeta] = useState<
-      (DlisMetadata & { validation: FrameValidation[] }) | null
-    >(null),
+    [meta, setMeta] = useState<InspectedDlis | null>(null),
+    [queue, setQueue] = useState<File[]>([]),
+    [reports, setReports] = useState<{ name: string; reason: string }[]>([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(""),
     [progress, setProgress] = useState(0),
@@ -63,7 +58,11 @@ export function Publication() {
     });
   const parser = useRef<DlisClient | null>(null),
     input = useRef<HTMLInputElement>(null),
-    stop = useRef(false);
+    stop = useRef(false),
+    staged = useRef<{
+      id: string;
+      parts: { etag: string; partNumber: number }[];
+    } | null>(null);
   useEffect(() => {
     stop.current = false;
     api<{ user: UserProfile | null }>("me")
@@ -81,6 +80,14 @@ export function Publication() {
   };
   async function read(f?: File) {
     if (!f) return;
+    if (staged.current) {
+      void api("uploads/" + staged.current.id, { method: "DELETE" }).catch(
+        () => {},
+      );
+      staged.current = null;
+    }
+    setFile(f);
+    setProgress(0);
     setError("");
     setResult(null);
     setStage(1);
@@ -88,60 +95,24 @@ export function Publication() {
     setConfirmed(false);
     setAuthorized(false);
     if (!isDlisName(f.name)) {
-      setError("Selecione um arquivo .DLIS.");
+      fileError(f, "Selecione um arquivo .DLIS.");
       return;
     }
     if (f.size > 512 * 1024 * 1024) {
-      setError("O limite de envio é 512 MB por arquivo.");
+      fileError(f, "O limite de envio é 512 MB por arquivo.");
       return;
     }
-    setFile(f);
     setBusy("Lendo metadados e validando os frames…");
     parser.current?.destroy();
-    parser.current = new DlisClient();
+    parser.current = new DlisClient((phase, percent) => {
+      setBusy(phase);
+      setProgress(percent ?? 0);
+    });
     try {
-      const m = await parser.current.parse(f);
-      const ranges: number[][] = [];
-      const validation: FrameValidation[] = [];
-      for (const lf of m.logicalFiles) {
-        for (const frame of lf.frames) {
-          try {
-            const r = await parser.current.decode(lf.index, frame.key);
-            const ds = frame.channels.filter(
-              (c) => detectChannel(c, r.strides[c.name]) === "DEPTH",
-            );
-            let range = null;
-            if (ds.length === 1) {
-              const raw = numericRange(r.data[ds[0].name]);
-              const factor = metersFactor(ds[0].units);
-              if (raw && factor !== null) {
-                range = raw.map((v: number) => v * factor);
-                ranges.push(range);
-              }
-            }
-            validation.push({
-              lf: lf.index,
-              frame: frame.key,
-              samples: r.frameCount,
-              depthRangeMeters: range,
-              ok: true,
-            });
-          } catch (error) {
-            const reason =
-              error instanceof Error ? error.message : "UNKNOWN_ERROR";
-            validation.push({
-              lf: lf.index,
-              frame: frame.key,
-              ok: false,
-              error: reason,
-            });
-            m.warnings.push(frame.name + ": " + reason);
-          }
-        }
-      }
-      const origins = m.logicalFiles
-        .map((l) => l.origin)
-        .filter((origin) => origin !== null);
+      const m = await parser.current.inspect(f);
+      const origins = m.logicalFiles.flatMap((l) =>
+        l.origins?.length ? l.origins : l.origin ? [l.origin] : [],
+      );
       const unique = (k: keyof OriginMetadata) => {
         const v = [
           ...new Set(
@@ -152,53 +123,74 @@ export function Publication() {
         ];
         return v.length === 1 ? String(v[0]) : "";
       };
-      const label = ranges.length
-        ? `${Math.min(...ranges.map((r) => r[0])).toFixed(3)}–${Math.max(...ranges.map((r) => r[1])).toFixed(3)} m`
-        : "";
       setForm({
         well: unique("wellName"),
         field: unique("fieldName"),
         company: unique("company"),
-        collection: "",
+        collection: unique("fileSetName"),
         run: unique("runNumber"),
         location: "unknown",
         visibility: "public",
-        depthLabel: label,
+        depthLabel: catalogDepthLabel(m.validation),
       });
-      setMeta({ ...m, validation });
+      setMeta(m);
       setStage(2);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
-      setError(reason);
+      fileError(f, reason);
     } finally {
+      parser.current?.destroy();
+      parser.current = null;
       setBusy("");
     }
+  }
+  function fileError(f: File, reason: string) {
+    setError(reason);
+    setReports((prev) => [...prev, { name: f.name, reason }]);
+  }
+  function selectFiles(list: FileList | null) {
+    if (!list?.length) return;
+    const [first, ...rest] = Array.from(list);
+    setQueue(rest);
+    setReports([]);
+    void read(first);
+  }
+  function nextFile() {
+    const [first, ...rest] = queue;
+    setQueue(rest);
+    void read(first);
   }
   async function submit() {
     if (!file || !meta || !confirmed || !authorized) return;
     setBusy("Enviando arquivo…");
     setError("");
     setProgress(0);
-    let uploadId = "";
+    let uploadId = staged.current?.id || "";
     try {
-      const d = await post<{ id: string }>("uploads", {
-        name: file.name,
-        size: file.size,
-        hash: meta.hash,
-      });
-      uploadId = d.id;
-      const parts = [];
-      const size = 8 * 1024 * 1024;
-      for (let offset = 0, n = 1; offset < file.size; offset += size, n++) {
-        if (stop.current) throw new Error(translate("Envio interrompido."));
-        const part = await api("uploads/" + uploadId + "/part?n=" + n, {
-          method: "PUT",
-          body: file.slice(offset, offset + size),
+      const parts = staged.current?.parts || [];
+      if (!staged.current) {
+        const d = await post<{ id: string }>("uploads", {
+          name: file.name,
+          size: file.size,
+          hash: meta.hash,
         });
-        parts.push(part);
-        setProgress(
-          Math.round((Math.min(offset + size, file.size) / file.size) * 95),
-        );
+        uploadId = d.id;
+        const size = 8 * 1024 * 1024;
+        for (let offset = 0, n = 1; offset < file.size; offset += size, n++) {
+          if (stop.current) throw new Error(translate("Envio interrompido."));
+          const part = await api<{ etag: string; partNumber: number }>(
+            "uploads/" + uploadId + "/part?n=" + n,
+            {
+              method: "PUT",
+              body: file.slice(offset, offset + size),
+            },
+          );
+          parts.push(part);
+          setProgress(
+            Math.round((Math.min(offset + size, file.size) / file.size) * 95),
+          );
+        }
+        staged.current = { id: uploadId, parts };
       }
       setBusy("Conferindo integridade e registrando publicação…");
       const r = await post<{ id: string; status: string }>(
@@ -211,13 +203,14 @@ export function Publication() {
           parts,
         },
       );
+      staged.current = null;
       setProgress(100);
       setResult(r);
       setStage(4);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
-      setError(reason);
-      if (uploadId)
+      fileError(file, reason);
+      if (uploadId && !staged.current)
         api("uploads/" + uploadId, { method: "DELETE" }).catch(() => {});
     } finally {
       setBusy("");
@@ -291,6 +284,23 @@ export function Publication() {
           {message(error)}
         </div>
       )}
+      {reports.length > 0 && (
+        <details open className="notice">
+          <summary>{translate("Relatório por arquivo")}</summary>
+          <ul>
+            {reports.map((r, i) => (
+              <li key={i}>
+                {r.name} · {message(r.reason)}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {queue.length > 0 && !busy && (
+        <button className="button" onClick={nextFile}>
+          {translate("Próximo arquivo")} · {queue[0].name} ({queue.length})
+        </button>
+      )}
       {busy && (
         <div className="notice" role="status">
           {message(busy)}
@@ -327,7 +337,7 @@ export function Publication() {
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
-            if (!busy) read(e.dataTransfer.files[0]);
+            if (!busy) selectFiles(e.dataTransfer.files);
           }}
         >
           <Upload size={35} />
@@ -340,7 +350,8 @@ export function Publication() {
             ref={input}
             type="file"
             accept=".dlis,.DLIS"
-            onChange={(e) => read(e.target.files?.[0])}
+            multiple
+            onChange={(e) => selectFiles(e.target.files)}
           />
         </label>
       ) : (
@@ -357,6 +368,20 @@ export function Publication() {
               </span>
             </div>
             <p className="status-label">{file?.name}</p>
+            {meta?.thumbnail && <Thumbnail trace={meta.thumbnail} />}
+            {meta && (
+              <p>
+                {meta.logicalFiles
+                  .flatMap((l) => l.tools || [])
+                  .map((t) => t.name)
+                  .join(" · ")}{" "}
+                {meta.logicalFiles
+                  .flatMap((l) => l.origins || [])
+                  .map((o) => o.creationTime)
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
             <div className="notice">
               <b>{translate("Empresa encontrada no arquivo:")}</b>{" "}
               {[...new Set(detected)].join(" / ") || translate("Não informada")}

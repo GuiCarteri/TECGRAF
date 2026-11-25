@@ -112,7 +112,7 @@
   "Aprovar publicação": "批准发布",
   "EXPLORAR DADOS": "探索数据",
   "Biblioteca pública": "公共资料库",
-  "Perfis de poços, organizados por fonte. Dados reais, do arquivo à análise.": "按来源整理的测井数据。从文件到分析，均为真实数据。",
+  "Consulte curvas, ferramentas e intervalos de profundidade por fonte.": "按来源查看曲线、仪器和深度范围。",
   "Publicar arquivo": "发布文件",
   "Arquivos publicados": "已发布文件",
   "Coleções disponíveis": "可用集合",
@@ -531,5 +531,16 @@
   "Apagando…": "正在删除…",
   "Publicação apagada.": "发布已删除。",
   "Exclusão pendente": "待删除",
-  "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.": "永久删除此发布？文件将被移除。分析、报告和导出记录将被保留。"
+  "Apagar publicação permanentemente? O arquivo será removido. Análises, relatórios e exportações serão preservados.": "永久删除此发布？文件将被移除。分析、报告和导出记录将被保留。",
+  "Consulte o código no terminal local.": "请在本地终端查看验证码。",
+  "Relatório por arquivo": "文件报告",
+  "Próximo arquivo": "下一个文件",
+  "Filtros técnicos": "技术筛选",
+  "Curva": "曲线",
+  "Intervalo de profundidade inválido.": "深度范围无效。",
+  "Metadados do DLIS": "DLIS 元数据",
+  "Amostras legíveis": "可读样本",
+  "Criação do arquivo": "文件创建时间",
+  "Reindexar DLIS": "重建 DLIS 索引",
+  "Índice atualizado.": "索引已更新。"
 }

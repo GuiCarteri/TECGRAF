@@ -1,4 +1,4 @@
-import { sameOrigin } from "@/lib/server/auth";
+import { HttpError, sameOrigin } from "@/lib/server/auth";
 import { refreshSession, clearSession, safeNext } from "@/lib/server/provider";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
@@ -12,7 +12,15 @@ export async function GET(request: Request) {
   try {
     await refreshSession(url.protocol === "https:");
     return Response.redirect(new URL(next, url), 303);
-  } catch {
+  } catch (error) {
+    if (!(error instanceof HttpError) || error.status >= 500)
+      return new Response(
+        "Não foi possível renovar a sessão agora. Tente novamente.",
+        {
+          status: 503,
+          headers: { "Cache-Control": "no-store", "Retry-After": "5" },
+        },
+      );
     await clearSession();
     return Response.redirect(
       new URL("/login?next=" + encodeURIComponent(next), url),

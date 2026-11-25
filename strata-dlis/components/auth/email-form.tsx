@@ -37,6 +37,7 @@ export function EmailForm({
     ),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  const [local, setLocal] = useState<boolean | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(
     initialConfigured ?? null,
   );
@@ -44,10 +45,11 @@ export function EmailForm({
     fetch("/api/auth/config")
       .then(async (r) => {
         if (!r.ok) throw new Error("AUTH_UNAVAILABLE");
-        return r.json() as Promise<{ configured: boolean }>;
+        return r.json() as Promise<{ configured: boolean; provider?: string }>;
       })
       .then((d) => {
         setConfigured(d.configured);
+        setLocal(d.provider === "local");
         if (!d.configured) setError("AUTH_NOT_CONFIGURED");
       })
       .catch(() => {
@@ -108,7 +110,7 @@ export function EmailForm({
     <form
       onSubmit={submit}
       className="stack"
-      action="/api/auth/login"
+      action={"/api/auth/" + mode}
       method="post"
     >
       <input type="hidden" name="next" value={safeNext(next)} />
@@ -143,6 +145,8 @@ export function EmailForm({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
+            name="name"
+            readOnly={local === null}
             autoComplete="name"
           />
         </label>
@@ -156,7 +160,11 @@ export function EmailForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
-          readOnly={mode === "verify" || mode === "change-password"}
+          readOnly={
+            mode === "verify" ||
+            mode === "change-password" ||
+            (mode === "register" && local === null)
+          }
         />
       </label>
       {["login", "register", "change-password"].includes(mode) && (
@@ -164,6 +172,7 @@ export function EmailForm({
           {translate("Senha")}
           <input
             required
+            readOnly={mode === "register" && local === null}
             type="password"
             name="password"
             minLength={mode === "login" ? 1 : 8}
@@ -175,6 +184,12 @@ export function EmailForm({
             }
           />
         </label>
+      )}
+      {mode === "verify" && local && (
+        <p className="notice">
+          {translate("Consulte o código no terminal local.")}{" "}
+          <code>npm run local -- mail {email}</code>
+        </p>
       )}
       {mode === "verify" && (
         <label className="form-field">
@@ -198,7 +213,9 @@ export function EmailForm({
       )}
       <button
         className="button primary"
-        disabled={busy || configured === false}
+        disabled={
+          busy || configured === false || (mode !== "login" && local === null)
+        }
       >
         {busy
           ? translate("Aguarde…")

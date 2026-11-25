@@ -17,7 +17,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, formatBytes } from "@/lib/api";
-import { readCatalogFiles, type CatalogFile } from "@/lib/catalog";
+import { Thumbnail } from "./thumbnail";
+import {
+  emptyTechnicalFilters,
+  matchesTechnicalFilters,
+  readCatalogFiles,
+  type CatalogFile,
+} from "@/lib/catalog";
 import { CatalogDashboard } from "./catalog-dashboard";
 import { Pick } from "./controls";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +38,8 @@ export function Library() {
   const [files, setFiles] = useState<CatalogFile[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
+    [filters, setFilters] = useState(emptyTechnicalFilters),
+    [retry, setRetry] = useState(0),
     [q, setQ] = useState(""),
     [source, setSource] = useState(""),
     [location, setLocation] = useState(""),
@@ -40,41 +48,71 @@ export function Library() {
     [view, setView] = useState("grid");
   const load = () => {
     setLoading(true);
-    setError("");
-    api("files")
-      .then((d) => setFiles(readCatalogFiles(d)))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    setRetry((n) => n + 1);
   };
   useEffect(() => {
-    let active = true;
-    api("files")
-      .then((d) => {
-        if (active) setFiles(readCatalogFiles(d));
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    let active = true,
+      latest = 0;
+    const refresh = async () => {
+      const request = ++latest;
+      try {
+        const items = readCatalogFiles(await api("files"));
+        if (active && latest === request) {
+          setFiles(items);
+          setError("");
+        }
+      } catch (e) {
+        if (active && latest === request)
+          setError(e instanceof Error ? e.message : "NETWORK_ERROR");
+      } finally {
+        if (active && latest === request) setLoading(false);
+      }
+    };
+    const visible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const channel = window.BroadcastChannel
+      ? new BroadcastChannel("strata-catalog")
+      : null;
+    if (channel) channel.onmessage = refresh;
+    const timer = window.setInterval(visible, 30000);
+    window.addEventListener("focus", visible);
+    document.addEventListener("visibilitychange", visible);
+    void refresh();
     return () => {
       active = false;
+      channel?.close();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", visible);
+      document.removeEventListener("visibilitychange", visible);
     };
-  }, []);
+  }, [retry]);
   const sources = [...new Set(files.map((f) => f.collection))].sort();
   const filtered = files.filter(
     (f) =>
       (!q ||
-        [f.well, f.company, f.field, f.run, f.original_name, f.collection]
+        [
+          f.well,
+          f.company,
+          f.field,
+          f.run,
+          f.original_name,
+          f.collection,
+          ...(f.summary?.wells || []),
+          ...(f.summary?.fields || []),
+          ...(f.summary?.tools || []),
+          ...(f.summary?.channels.map((c) => c.name) || []),
+        ]
           .join(" ")
           .toLowerCase()
           .includes(q.toLowerCase())) &&
+      matchesTechnicalFilters(f, filters) &&
       (!source || f.collection === source) &&
       (!location || f.location === location) &&
       (!type || f.types.includes(type)),
   );
   const clear = () => {
+    setFilters(emptyTechnicalFilters);
     setQ("");
     setSource("");
     setLocation("");
@@ -91,7 +129,7 @@ export function Library() {
           </h1>
           <p>
             {translate(
-              "Perfis de poços, organizados por fonte. Dados reais, do arquivo à análise.",
+              "Consulte curvas, ferramentas e intervalos de profundidade por fonte.",
             )}
           </p>
         </div>
@@ -175,6 +213,38 @@ export function Library() {
               </button>
             ))}
           </div>
+          <details className="technical-filters">
+            <summary>{translate("Filtros técnicos")}</summary>
+            {(
+              [
+                ["well", "Nome do poço"],
+                ["field", "Campo"],
+                ["curve", "Curva"],
+                ["tool", "Ferramenta"],
+                ["minDepth", "De (m)"],
+                ["maxDepth", "Até (m)"],
+              ] as const
+            ).map(([key, label]) => (
+              <label className="form-field" key={key}>
+                {translate(label)}
+                <input
+                  type={key.endsWith("Depth") ? "number" : "search"}
+                  step={key.endsWith("Depth") ? "any" : undefined}
+                  value={filters[key]}
+                  onChange={(e) =>
+                    setFilters({ ...filters, [key]: e.target.value })
+                  }
+                />
+              </label>
+            ))}
+            {filters.minDepth &&
+              filters.maxDepth &&
+              Number(filters.minDepth) > Number(filters.maxDepth) && (
+                <p role="alert">
+                  {translate("Intervalo de profundidade inválido.")}
+                </p>
+              )}
+          </details>
           <div className="filter-note">
             <FileSearch size={21} />
             <b>{translate("Da fonte à amostra")}</b>
@@ -323,6 +393,9 @@ export function Library() {
                               {translate("Validado")}
                             </span>
                           </div>
+                          {f.summary?.thumbnail && (
+                            <Thumbnail trace={f.summary.thumbnail} />
+                          )}
                           <h3>{f.well || translate("Poço não informado")}</h3>
                           <p>
                             {f.field || translate("Campo não informado")} ·{" "}
@@ -345,6 +418,60 @@ export function Library() {
                               <dd>{formatBytes(f.size, locale)}</dd>
                             </div>
                           </dl>
+                          {f.summary && (
+                            <details className="catalog-details">
+                              <summary>
+                                {translate("Metadados do DLIS")}
+                              </summary>
+                              <dl>
+                                <div>
+                                  <dt>Frames</dt>
+                                  <dd>{f.summary.frameCount}</dd>
+                                </div>
+                                <div>
+                                  <dt>{translate("Amostras legíveis")}</dt>
+                                  <dd>
+                                    {f.summary.samples?.toLocaleString(
+                                      locale,
+                                    ) ?? "—"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>{translate("Ferramenta")}</dt>
+                                  <dd>
+                                    {f.summary.toolDetails
+                                      .map((t) =>
+                                        [
+                                          t.name,
+                                          [t.genericName, t.trademarkName]
+                                            .filter(Boolean)
+                                            .join(" · "),
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" — "),
+                                      )
+                                      .join(", ") || "—"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>{translate("Criação do arquivo")}</dt>
+                                  <dd>{f.summary.dates.join(", ") || "—"}</dd>
+                                </div>
+                                <div>
+                                  <dt>{translate("Curva")}</dt>
+                                  <dd>
+                                    {f.summary.channels
+                                      .map((c) =>
+                                        c.unit
+                                          ? c.name + " (" + c.unit + ")"
+                                          : c.name,
+                                      )
+                                      .join(", ") || "—"}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </details>
+                          )}
                           <div className="card-publisher">
                             {f.published_at &&
                             !Number.isNaN(Date.parse(f.published_at))

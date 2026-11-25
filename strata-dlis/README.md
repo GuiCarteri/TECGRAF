@@ -8,7 +8,7 @@ Biblioteca pública e análise de arquivos DLIS RP66 V1, com autenticação por 
 
 - React 19 + TypeScript. As rotas `app/` usam a API do App Router, executada por **Vinext sobre Vite**. Não execute `next build` neste projeto.
 - Cloudflare Workers executa páginas e API. **D1 (`DB`)** mantém usuários, permissões, metadados, análises, pontos, histórico e registros de exportação. **R2 (`BUCKET`)** armazena arquivos publicados.
-- Supabase Auth gerencia senhas, confirmação, recuperação e sessões. Não é necessário migrar os dados da aplicação para um banco Supabase.
+- No build de produção, Supabase Auth gerencia senhas, confirmação, recuperação e sessões. Não é necessário migrar os dados da aplicação para um banco Supabase.
 - Arquivos locais são processados no navegador por Web Worker. O parser foi corrigido contra RP66 V1 e comparado com dlisio. Exportações de pontos e paleta foram preservadas; classificações continuam provisórias.
 - Nenhum login por headers, identidade simulada ou infraestrutura de editor é utilizado pela aplicação. O ambiente de testes tem fixtures isoladas, que nunca entram no build de produção.
 
@@ -18,9 +18,15 @@ O processamento do arquivo é client-side; biblioteca, autenticação, publicaç
 
 Com Node.js 22.18 ou superior e npm, execute `npm run dev` na raiz do repositório ou em `strata-dlis/`. A primeira execução instala as dependências com pnpm 11.25.0 pelo npm e aplica as migrações no D1 local. O catálogo abre em **http://localhost:5173**. Python é opcional para rodar o site e necessário para os testes de banco e de ciência.
 
-Em outro terminal, `npm run seed` adiciona dois DLIS fictícios à coleção **Exemplos sintéticos**. Atualize a biblioteca para ver os exemplos. Use `npm run doctor` antes de iniciar para verificar o ambiente. As mensagens explicam em português como corrigir porta ocupada ou configuração incompleta.
+Em outro terminal, `npm run seed` importa os DLIS de `samples/` na raiz ou em `strata-dlis/`. Se essas pastas estiverem vazias ou ausentes, o comando cria os DLIS fictícios Aurora e Boreal em **Exemplos sintéticos**. O comando atua no banco e no bucket locais. Use `npm run doctor` antes de iniciar para verificar o ambiente. As mensagens explicam em português como corrigir porta ocupada ou configuração incompleta.
 
-O arquivo `.env.example` contém os valores do modo público. O início manual cria `.dev.vars` apenas se o arquivo ainda não existir. O Git ignora as variáveis locais e o estado `.wrangler/`. Contas reais exigem `SUPABASE_URL` e `SUPABASE_ANON_KEY`. A ausência das duas variáveis mantém o catálogo público disponível e as rotas privadas protegidas.
+O arquivo `.env.example` contém os padrões do modo de desenvolvimento. O início manual cria `.dev.vars` apenas se o arquivo ainda não existir. O Git ignora as variáveis locais e o estado `.wrangler/`. Com ambas as variáveis Supabase vazias, o Vite habilita contas locais com senha Argon2id e confirmação por código de uso único. No cadastro e em “Esqueci minha senha”, consulte o código em outro terminal com `npm run local -- mail seu@email.test`. O código vale dez minutos. Após confirmar e abrir **Minha conta**, `npm run local -- role seu@email.test publisher` habilita o envio. Use `admin` no lugar de `publisher` para testar a revisão no seu banco local.
+
+Quando as duas variáveis apontam para um projeto Supabase, o servidor usa esse provedor. Uma configuração parcial desabilita as contas. O build de produção requer a configuração do Supabase para autenticar usuários. O catálogo continua disponível para visitantes.
+
+Em **Publicar DLIS**, selecione um ou mais arquivos. Cada arquivo tem leitura, confirmação e autorização próprias. A conta exibe o envio assim que o servidor confirma o hash. A biblioteca inclui arquivos públicos aprovados e atualiza ao voltar à aba e a cada 30 segundos enquanto visível. A aprovação em outra aba do mesmo navegador dispara uma atualização imediata entre abas que compartilham o canal. **Filtros técnicos** busca por poço, campo, curva, ferramenta e sobreposição de profundidades em metros.
+
+A migração indexa os metadados disponíveis das publicações anteriores. Para recuperar uma miniatura, data, ferramenta ou intervalo ausente, abra **Administração → Revisar → Reindexar DLIS**. O Worker lê o objeto existente e a API confere seu hash antes de gravar o índice. A revisão e a visibilidade escolhidas continuam a valer.
 
 O ID D1 zerado em `wrangler.json` serve apenas como placeholder local. `pnpm deploy` recusa esse ID. O Vite/Miniflare pode buscar informações auxiliares da Cloudflare; em um ambiente local sem essa conectividade, use `CLOUDFLARE_CF_FETCH_ENABLED=false`. Isso não substitui o provedor de autenticação nem altera permissões.
 
@@ -34,7 +40,7 @@ Para iniciar, execute `npm run dev` na raiz. Encerre com `Ctrl+C`. Esse comando 
 
 O container já instala pnpm; não é necessário executar `corepack enable` nele (isso pode causar EACCES). O comando `npm run dev` obtém a versão fixada do pnpm também fora do container.
 
-Idioma muda imediatamente quando o JavaScript está disponível. **Aplicar** não recarrega a página nesse caso, preservando arquivo local e formulários. Sem JavaScript, **Aplicar** usa o formulário nativo e recarrega o idioma no servidor. O login também aceita envio nativo; senhas de contas existentes são validadas pelo Supabase, e a exigência de oito caracteres permanece para cadastro e nova senha.
+Idioma muda imediatamente quando o JavaScript está disponível. **Aplicar** não recarrega a página nesse caso, preservando arquivo local e formulários. Sem JavaScript, **Aplicar** usa o formulário nativo e recarrega o idioma no servidor. O login também aceita envio nativo; senhas de contas existentes são validadas pelo provedor ativo, e a exigência de oito caracteres permanece para cadastro e nova senha.
 
 Se aparecer **Autenticação indisponível**, preencha `SUPABASE_URL` e `SUPABASE_ANON_KEY` no `.dev.vars` do seu Codespace e reinicie `pnpm dev`. Não copie `.env.example` por cima de credenciais existentes e não envie chaves pelo chat.
 

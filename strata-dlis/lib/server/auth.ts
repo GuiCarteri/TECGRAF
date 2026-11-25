@@ -10,7 +10,9 @@ export async function currentUser() {
   const admins = String(env.ADMIN_USER_IDS || "")
     .split(",")
     .map((s) => s.trim());
-  const isAdmin = admins.includes(identity.userId.replace(/^supabase:/, ""));
+  const isAdmin =
+    identity.userId.startsWith("supabase:") &&
+    admins.includes(identity.userId.slice(9));
   await query(
     "INSERT INTO users (id,email,name,role,created_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,name=excluded.name",
     identity.userId,
@@ -35,7 +37,14 @@ export function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin)
     throw new HttpError("Origem não autorizada.", 403);
+  const referer = request.headers.get("referer");
+  if (
+    !origin &&
+    referer &&
+    URL.parse(referer)?.origin !== new URL(request.url).origin
+  )
+    throw new HttpError("Origem não autorizada.", 403);
   const site = request.headers.get("sec-fetch-site");
-  if (site === "cross-site")
+  if (site === "cross-site" || (!origin && !referer && site === "same-site"))
     throw new HttpError("Requisição externa não autorizada.", 403);
 }

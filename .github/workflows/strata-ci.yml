@@ -64,3 +64,4 @@ jobs:
           npm run test:browser
           npm run test:browser:scientific
           npm run test:browser:publications
+          npm run test:phase2
