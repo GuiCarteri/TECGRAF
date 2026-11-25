@@ -42,6 +42,10 @@ try {
     assert.equal(r.status, 200, html.slice(0, 300));
     assert.ok(html.includes('lang="' + locale + '"'), html.slice(0, 1500) + '\n' + logs.slice(-2500));
     assert.ok(html.includes(label));
+    const head = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? "";
+    assert.match(head, /<title>STRATA · /);
+    assert.match(head, /<meta name="description"/);
+    assert.ok(!html.includes("__vinext_streaming_metadata_body:"), "Metadados devem chegar no cabeçalho inicial");
     console.log("PASS: initial SSR language " + locale);
   }
   for (const [header,cookie,lang,theme] of [

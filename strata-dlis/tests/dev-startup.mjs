@@ -2,10 +2,10 @@ import { stripVTControlCharacters } from "node:util";
 import { spawn } from "node:child_process";
 import http from "node:http";
 import assert from "node:assert/strict";
-const host = "strata-test-5173.app.github.dev";
+const host = "strata-test-5174.app.github.dev";
 const server = spawn(
   process.execPath,
-  ["scripts/dev.mjs", "--host", "127.0.0.1"],
+  ["scripts/dev.mjs", "--host", "127.0.0.1", "--port", "5174"],
   {
     env: {
       ...process.env,
@@ -25,7 +25,7 @@ function request(path, headers = {}, method = "GET", body) {
     const req = http.request(
       {
         hostname: "127.0.0.1",
-        port: 5173,
+        port: 5174,
         path,
         method,
         headers: { Host: host, "X-Forwarded-Proto": "https", ...headers },
@@ -127,7 +127,7 @@ try {
   assert.equal(external.status, 403);
   const duplicate = spawn(
     process.execPath,
-    ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1"],
+    ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "5174"],
     {
       env: { ...process.env, CLOUDFLARE_CF_FETCH_ENABLED: "false" },
       stdio: ["ignore", "pipe", "pipe"],
@@ -147,9 +147,9 @@ try {
     });
   });
   assert.notEqual(code, 0);
-  assert.match(duplicateLogs, /5173.*already in use/i);
+  assert.match(duplicateLogs, /5174.*already in use/i);
   console.log(
-    "PASS: manual startup, local D1, one fixed port, Codespaces HTTPS forwarding, native language form and CSRF",
+    "PASS: manual startup, local D1, explicit port, Codespaces HTTPS forwarding, native language form and CSRF",
   );
 } finally {
   server.kill("SIGTERM");

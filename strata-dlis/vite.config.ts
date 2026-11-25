@@ -29,12 +29,17 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     open: false,
-    allowedHosts: forwardedHost ? [forwardedHost] : [],
-    ws: forwardedHost
-      ? { protocol: "wss", host: forwardedHost, clientPort: 443 }
-      : undefined,
   },
   plugins: [
+    {
+      name: "strata:codespaces-forwarding",
+      config(config) {
+        const host = codespaceHost(process.env, config.server?.port);
+        if (host) {
+          return { server: { allowedHosts: [host], ws: { protocol: "wss", host, clientPort: 443 } } };
+        }
+      },
+    },
     fixVinextRscProxyImports(),
     vinext(),
     cloudflare({

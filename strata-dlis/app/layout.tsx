@@ -1,23 +1,7 @@
-import type { Metadata } from "next";
 import "./globals.css";
 import { interfaceSettings } from "@/lib/server/preferences";
 import { translate } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/provider";
-
-export async function generateMetadata(): Promise<Metadata> {
-  const { locale } = await interfaceSettings();
-  return {
-    title: "STRATA · " + translate(locale, "Biblioteca DLIS"),
-    description: translate(
-      locale,
-      "Biblioteca e análise rastreável de arquivos DLIS RP66 V1.",
-    ),
-    icons: {
-      icon: "/favicon.svg",
-      shortcut: "/favicon.svg",
-    },
-  };
-}
 
 export default async function RootLayout({
   children,
@@ -27,6 +11,15 @@ export default async function RootLayout({
   const { locale, theme, syncAccount } = await interfaceSettings();
   return (
     <html lang={locale} data-theme={theme}>
+      <head>
+        <title>{"STRATA · " + translate(locale, "Biblioteca DLIS")}</title>
+        <meta
+          name="description"
+          content={translate(locale, "Biblioteca e análise rastreável de arquivos DLIS RP66 V1.")}
+        />
+        <link rel="icon" href="/favicon.svg" />
+        <link rel="shortcut icon" href="/favicon.svg" />
+      </head>
       <body className="antialiased">
         <I18nProvider
           initialLocale={locale}

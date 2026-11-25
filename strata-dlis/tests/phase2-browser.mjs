@@ -131,6 +131,8 @@ try {
     return stdout.match(/(?:Confirmação|Recuperação) · (\d{6})/)?.[1];
   };
   await library.goto(base + "/");
+  await library.locator("head meta[name=description]").waitFor({ state: "attached" });
+  assert.equal(await library.locator(".app-shell").count(), 1);
   assert.equal((await guest.request.get(base + "/api/files")).status(), 200);
   assert.equal((await guest.request.get(base + "/api/my-files")).status(), 401);
   await page.goto(base + "/publish");
