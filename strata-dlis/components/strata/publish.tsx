@@ -1,4 +1,5 @@
 "use client";
+import { useHydrated } from "./use-hydrated";
 import { useI18n } from "@/lib/i18n/provider";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -32,6 +33,7 @@ import {
 import { Thumbnail } from "./thumbnail";
 import { Pick } from "./controls";
 export function Publication({ initialUser: user }: { initialUser: UserProfile }) {
+  const hydrated = useHydrated();
   const { translate, message, locale, number } = useI18n();
   const [file, setFile] = useState<File | null>(null),
     [meta, setMeta] = useState<InspectedDlis | null>(null),
@@ -331,16 +333,16 @@ export function Publication({ initialUser: user }: { initialUser: UserProfile })
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
-            if (!busy) selectFiles(e.dataTransfer.files);
+            if (hydrated && !busy) selectFiles(e.dataTransfer.files);
           }}
         >
           <Upload size={35} />
-          <strong>{translate("Selecione seu arquivo DLIS")}</strong>
+          <strong>{hydrated ? translate("Selecione seu arquivo DLIS") : translate("Carregando…")}</strong>
           <p>
             {translate("RP66 V1 · até 512 MB · nenhuma publicação automática")}
           </p>
           <input
-            disabled={!!busy}
+            disabled={!hydrated || !!busy}
             ref={input}
             type="file"
             accept=".dlis,.DLIS"

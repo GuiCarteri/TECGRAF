@@ -1,6 +1,6 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import {
   Layers3,
   LibraryBig,
@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   Menu,
 } from "lucide-react";
+import { useHydrated } from "./use-hydrated";
 import Link from "next/link";
 import type { UserProfile } from "@/lib/api-types";
 import { api } from "@/lib/api";
@@ -47,7 +48,7 @@ export function LibraryLink({
     </Link>
   );
 }
-const subscribeHydration = () => () => {};
+
 export function Shell({
   children,
   active,
@@ -61,11 +62,7 @@ export function Shell({
   const [fetchedUser, setUser] = useState<UserProfile | null>(initialUser ?? null);
   const user = initialUser ?? fetchedUser;
   const [menu, setMenu] = useState(false);
-  const hydrated = useSyncExternalStore(
-    subscribeHydration,
-    () => true,
-    () => false,
-  );
+  const hydrated = useHydrated();
   useEffect(() => {
     if (initialUser) return;
     api<{ user: UserProfile | null }>("me")
