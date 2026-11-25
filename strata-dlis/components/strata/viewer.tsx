@@ -75,6 +75,12 @@ import { Pick } from "./controls";
 import { validateRegions, type Region } from "@/lib/dlis/regions";
 import { TrackCanvas } from "./track-canvas";
 import { TrackTools } from "./track-tools";
+import { ProfileWorkspace } from "./profile-workspace";
+import {
+  curveFamily,
+  defaultScale,
+  scaleLimits,
+} from "@/lib/dlis/profile-curves";
 import { Waveform } from "./waveform";
 import { PointsTable } from "./points-table";
 const kinds = ["GR", "CBL", "VDL", "USIT"];
@@ -103,6 +109,7 @@ function depthNames(frame: FrameMetadata) {
 
 export function Viewer({ file: remoteId }: { file?: string }) {
   const { translate, message, locale, number } = useI18n();
+  const [profileOpen, setProfileOpen] = useState<boolean | null>(null);
   const none = { value: "", label: translate("Nenhum canal selecionado") };
   const [file, setFile] = useState<File | null>(null),
     [meta, setMeta] = useState<DlisMetadata | null>(null),
@@ -239,7 +246,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
             /^(us|µs|μs|deg|degree|degrees|°)$/i.test(c.units),
         )
         .map((c) => c.name);
-      const key = option.lf + "|" + option.frame.key + "|" + option.channel.key;
+      const key = JSON.stringify([option.lf, option.frame.key, channels]);
       if (!cache.current.has(key)) {
         const task = parser.current!.decode(
           option.lf,
@@ -323,6 +330,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     setMeta(null);
     setFile(f);
     setExtra([]);
+    setProfileOpen(null);
     try {
       const m = await parser.current.parse(f);
       if (g !== generation.current) return;
@@ -353,6 +361,14 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         if (chosen) await setTrack(k, chosen.value, m);
       }
       if (g !== generation.current) return;
+      const known = ["SP", "RT", "RS", "RHOB", "NPHI", "DT", "CALI"];
+      for (const kind of known) {
+        const matches = opts.filter((o) => curveFamily(o.channel) === kind);
+        if (matches.length !== 1) continue;
+        setExtra((previous) => [...previous, kind]);
+        await setTrack(kind, matches[0].value, m);
+        if (g !== generation.current) return;
+      }
       const cblRefs = m.logicalFiles.flatMap((lf) =>
         lf.parameters.filter(
           (p) =>
@@ -589,7 +605,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
       ),
   );
   return (
-    <div className="viewer-page">
+    <div className={"viewer-page" + (profileOpen ? " showing-profile" : "")}>
       <div className="viewer-heading">
         <div>
           <LibraryLink className="breadcrumb" preserveUnsaved={dirty}>
@@ -725,6 +741,46 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                 "Visão geral por amostras próximas; amplie para inspecionar detalhes.",
               )}
             </p>
+            <div className="profile-mode-switch">
+              <button
+                className="button"
+                aria-pressed={!profileOpen}
+                onClick={() =>
+                  setProfileOpen((v) => (v === null ? null : false))
+                }
+              >
+                {translate("Leitura do ponto")}
+              </button>
+              <button
+                className="button"
+                aria-pressed={!!profileOpen}
+                disabled={!Object.keys(tracks).length}
+                onClick={() => setProfileOpen(true)}
+              >
+                {translate("Perfil composto")}
+              </button>
+              {profileOpen && (
+                <button
+                  className="button compact"
+                  onClick={() => setMappingOpen(true)}
+                >
+                  {translate("Configurar tracks")}
+                </button>
+              )}
+            </div>
+            {profileOpen !== null && (
+              <div hidden={!profileOpen}>
+                <ProfileWorkspace
+                  active={profileOpen}
+                  key={meta.hash}
+                  metadata={meta}
+                  filename={file?.name || "DLIS"}
+                  tracks={tracks}
+                  initial={[from, to]}
+                  agc={agc}
+                />
+              </div>
+            )}
             <div className="viewer-toolbar">
               <div className="row">
                 <label className="inline-field">
@@ -924,14 +980,14 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                               <span>
                                 {t.stride > 1
                                   ? translate("Componente 0")
-                                  : number(t.range[0], {
+                                  : number(scaleLimits(t, defaultScale(t))[0], {
                                       maximumSignificantDigits: 4,
                                     })}
                               </span>
                               <span>
                                 {t.stride > 1
                                   ? t.stride - 1
-                                  : number(t.range[1], {
+                                  : number(scaleLimits(t, defaultScale(t))[1], {
                                       maximumSignificantDigits: 4,
                                     })}
                               </span>

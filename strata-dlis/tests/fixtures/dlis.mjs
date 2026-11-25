@@ -1,5 +1,5 @@
 // Deterministic RP66 V1 bytes; all measurements below are SYNTHETIC test data.
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 export const cat = (...xs) => Buffer.concat(xs.map((x) => Buffer.from(x)));
 export const uv = (n) =>
   n < 128
@@ -68,7 +68,7 @@ export function record(body, attr = 0x80, type = 0) {
   );
   return cat(u16(segment.length + 4), [255, 1], segment);
 }
-export function makeFixture({ rows = 1201, encrypted = false, catalogDetails = false, wellName = "Synthetic QA well" } = {}) {
+export function makeFixture({ rows = 1201, encrypted = false, catalogDetails = false, petrophysics = false, depthOffset = 0, wellName = "Synthetic QA well" } = {}) {
   const channels = [
     ["TDEP", "m", 1],
     ["DEPTH", "m", 1],
@@ -76,6 +76,7 @@ export function makeFixture({ rows = 1201, encrypted = false, catalogDetails = f
     ["CBL", "mV", 1],
     ["VDL", "", 128],
     ["AIBK", "MRayl", 36],
+    ...(petrophysics ? [["SP","mV",1],["ILD","ohm.m",1],["LLS","ohm.m",1],["RHOB","g/cm3",1],["NPHI","v/v",1],["DT","us/ft",1],["CALI","in",1]] : []),
   ];
   const records = [
     record(
@@ -129,7 +130,7 @@ export function makeFixture({ rows = 1201, encrypted = false, catalogDetails = f
       record(Buffer.from([4, 2, 8, 9, 9, 3, 1, 2, 3, 4, 5, 6]), 0x90, 132),
     );
   for (let i = 0; i < rows; i++) {
-    const d = 1000 + i * 0.1 + (i > 600 ? 10 : 0);
+    const d = 1000 + depthOffset + i * 0.1 + (i > 600 ? 10 : 0);
     const missing = i >= 400 && i <= 420;
     const values = [
       d,
@@ -151,6 +152,7 @@ export function makeFixture({ rows = 1201, encrypted = false, catalogDetails = f
           ? -2000
           : 5 + 3 * Math.sin(i / 60) * Math.cos((c / 36) * Math.PI * 2),
       );
+    if(petrophysics) values.push(...[-32+8*Math.sin(i/16),Math.exp(2+1.8*Math.sin(i/19)),Math.exp(2+1.2*Math.cos(i/19)),2.42+.20*Math.sin(i/23),.15+.13*Math.cos(i/26),64+14*Math.cos(i/29),8.6+.5*Math.sin(i/10)].map(v=>missing?-999.25:v));
     records.push(record(cat(ob("FRAME"), uv(i + 1), ...values.map(f32)), 0, 0));
   }
   return cat(
@@ -158,5 +160,16 @@ export function makeFixture({ rows = 1201, encrypted = false, catalogDetails = f
     ...records,
   );
 }
-if (process.argv[1] === new URL(import.meta.url).pathname && process.argv[2])
-  writeFileSync(process.argv[2], makeFixture());
+if (process.argv[1] === new URL(import.meta.url).pathname && process.argv[2]) {
+  if (process.argv[2] === "--profiles") {
+    const directory = "test-results/phase4-samples";
+    mkdirSync(directory, { recursive: true });
+    for (const [name, depthOffset] of [["Aurora", 0], ["Boreal", 5]]) {
+      const path = directory + "/" + name + "-synthetic.dlis";
+      writeFileSync(path, makeFixture({ wellName: name + " (sintético)", depthOffset, rows: 1000, petrophysics: true }));
+      console.log(path);
+    }
+  } else {
+    writeFileSync(process.argv[2], makeFixture());
+  }
+}

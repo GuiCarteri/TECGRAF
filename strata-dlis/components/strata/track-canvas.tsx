@@ -3,6 +3,7 @@ import { useI18n, useDarkTheme } from "@/lib/i18n/provider";
 import { RegionEditor } from "./regions";
 import type { Region } from "@/lib/dlis/regions";
 import { useRef, useEffect } from "react";
+import { lowerBound } from "@/lib/dlis/profile-curves";
 import { drawTrack, locate, type Track } from "@/lib/dlis/plotting";
 export function TrackCanvas({
   track,
@@ -46,7 +47,8 @@ export function TrackCanvas({
     const render = () => {
       cancelAnimationFrame(pending);
       pending = requestAnimationFrame(() => {
-        if (ref.current) drawTrack(ref.current, track, from, to, agc, undefined, dark);
+        if (ref.current)
+          drawTrack(ref.current, track, from, to, agc, undefined, dark);
       });
     };
     render();
@@ -66,9 +68,9 @@ export function TrackCanvas({
       (e.clientX - r.left) / r.width,
     );
   };
-  const visible = track.index.indices.some(
-    (i: number) => track.depth[i] >= from && track.depth[i] <= to,
-  );
+  const ids = track.index.indices;
+  const visible =
+    lowerBound(track.depth, ids, from) < lowerBound(track.depth, ids, to, true);
   return (
     <div className="track-plot">
       <canvas

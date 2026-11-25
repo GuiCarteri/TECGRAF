@@ -21,6 +21,8 @@
     "test:database": "python3 tests/database.py && python3 tests/migration.py && python3 tests/model-database.py && python3 tests/catalog-migration.py",
     "test:browser:serve": "vite --config tests/browser/vite.config.ts",
     "i18n:check": "node scripts/check-i18n.mjs",
+    "sample:profiles": "node tests/fixtures/dlis.mjs --profiles",
+    "test:phase4": "node tests/run-browser.mjs tests/phase4-browser.mjs",
     "test:phase3": "node tests/run-browser.mjs tests/phase3-browser.mjs",
     "test:phase2": "node tests/phase2-browser.mjs",
     "test:browser": "node tests/run-browser.mjs",

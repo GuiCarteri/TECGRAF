@@ -1,0 +1,201 @@
+.profile-mode-switch,
+.profile-actions,
+.profile-exports,
+.profile-fields,
+.comparison-settings,
+.profile-settings > label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.profile-mode-switch {
+  margin: 12px 0;
+}
+.profile-mode-switch [aria-pressed="true"],
+.profile-actions [aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.profile-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 1rem 0;
+}
+.profile-panel .profile-actions,
+.comparison-settings,
+.profile-exports,
+.profile-fields,
+.profile-settings,
+.profile-ruler,
+.profile-panel > .status-label {
+  padding: 10px 14px;
+}
+.profile-exports {
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.profile-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-top: 1px solid var(--border);
+}
+.profile-columns.paired {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.profile-column {
+  min-width: 0;
+}
+.profile-column + .profile-column {
+  border-left: 2px solid var(--input);
+}
+.sheet-scroll {
+  overflow: auto;
+  overscroll-behavior-x: contain;
+}
+.sheet-scroll canvas {
+  display: block;
+  cursor: crosshair;
+}
+.profile-crosshair {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--primary);
+}
+.profile-ruler {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  background: var(--accent);
+}
+.profile-fields label,
+.comparison-settings label {
+  display: grid;
+  gap: 3px;
+  font-size: 0.83rem;
+}
+.profile-fields input,
+.profile-fields select,
+.comparison-settings select {
+  max-width: 15rem;
+  border: 1px solid var(--input);
+  border-radius: 5px;
+  padding: 4px 8px;
+  color: var(--foreground);
+  background: var(--card);
+}
+.comparison-settings input {
+  max-width: 100%;
+}
+.comparison-channels {
+  max-height: 13rem;
+  overflow: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.comparison-channels label {
+  display: inline-flex;
+  align-items: center;
+}
+.profile-settings summary {
+  cursor: pointer;
+}
+.profile-settings > label {
+  margin-top: 8px;
+}
+.profile-minimap {
+  position: relative;
+  display: grid;
+  margin: 2px 14px;
+  gap: 2px;
+  color: var(--primary);
+  font-size: 0.78rem;
+}
+.profile-minimap svg {
+  width: 100%;
+  height: 32px;
+  background: var(--secondary);
+  border-radius: 4px;
+}
+.profile-minimap rect {
+  stroke: var(--primary);
+  fill: color-mix(in srgb, var(--primary) 16%, transparent);
+}
+.profile-minimap input {
+  width: 100%;
+  accent-color: var(--primary);
+}
+.profile-readings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--secondary);
+  font: 0.78rem var(--font-interface);
+}
+.profile-readings dt {
+  color: var(--muted-foreground);
+}
+.profile-readings dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.showing-profile .viewer-workspace,
+.showing-profile .viewer-toolbar,
+.showing-profile .presets {
+  display: none;
+}
+@media (max-width: 600px) {
+  .profile-actions .button {
+    white-space: normal;
+  }
+  .profile-panel .profile-actions,
+  .profile-settings {
+    padding: 8px;
+  }
+  .profile-column canvas:focus-visible {
+    outline-offset: -3px;
+  }
+  .profile-fields {
+    align-items: flex-start;
+  }
+  .profile-fields input {
+    max-width: 9rem;
+  }
+}
+
+.profile-depth-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 14px 8px;
+  font-size: 0.85rem;
+}
+.profile-depth-search input {
+  width: 8.8rem;
+  border: 1px solid var(--input);
+  border-radius: 5px;
+  padding: 4px 6px;
+}
+
+.fixed-depth {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  height: 0;
+  pointer-events: none;
+}
+.fixed-depth svg {
+  border-right: 1px solid var(--border);
+}
+.fixed-depth text {
+  fill: var(--foreground);
+  font: 11px system-ui;
+}

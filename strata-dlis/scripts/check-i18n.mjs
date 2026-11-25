@@ -47,6 +47,8 @@ const invariant = new Set([
   "· RP66",
   "IPD",
   "MRayl",
+  "Δ",
+  "m ·",
   "⌘/Ctrl K",
   "0–",
   "Z ≥ 10",

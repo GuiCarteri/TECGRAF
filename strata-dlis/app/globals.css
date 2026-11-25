@@ -1,6 +1,7 @@
 @import "../styles/strata.css";
 @import "../styles/workspace.css";
 @import "../styles/preferences.css";
+@import "../styles/profile.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";

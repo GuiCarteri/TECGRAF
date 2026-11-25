@@ -1,4 +1,12 @@
 import {
+  curveStyle,
+  defaultScale,
+  fraction,
+  scaleLimits,
+  visiblePaths,
+  type Scale,
+} from "./profile-curves.ts";
+import {
   depthIndex,
   metersFactor,
   numericRange,
@@ -27,6 +35,10 @@ export type Track = {
   timeName?: string;
   azimuthName?: string;
 };
+const indexedDepths = new WeakMap<
+  Float64Array,
+  Map<number, { depth: Float64Array; index: ReturnType<typeof depthIndex> }>
+>();
 export function makeTrack(
   id: string,
   kind: string,
@@ -44,9 +56,20 @@ export function makeTrack(
       "Não foi possível identificar um canal de profundidade com unidade conhecida.",
     );
   const rawDepth = result.data[depthName];
-  const depth = Float64Array.from(rawDepth, (v: number) =>
-    validity(v) === "Válido" ? v * factor : NaN,
-  );
+  let units = indexedDepths.get(rawDepth);
+  if (!units) {
+    units = new Map();
+    indexedDepths.set(rawDepth, units);
+  }
+  let cached = units.get(factor);
+  if (!cached) {
+    const depth = Float64Array.from(rawDepth, (v: number) =>
+      validity(v) === "Válido" ? v * factor : NaN,
+    );
+    cached = { depth, index: depthIndex(depth) };
+    units.set(factor, cached);
+  }
+  const { depth, index } = cached;
   const stride = result.strides[channel.name],
     array = result.data[channel.name];
   if (!array || !stride || array.length !== stride * result.frameCount)
@@ -82,7 +105,7 @@ export function makeTrack(
     result,
     depthName,
     depth,
-    index: depthIndex(depth),
+    index,
     stride,
     range: kind === "USIT" ? [0, 10] : range,
     rawRange,
@@ -119,6 +142,8 @@ export function drawTrack(
   agc: boolean,
   height = 620,
   dark = false,
+  scale: Scale = defaultScale(track),
+  accessible = false,
 ) {
   const width = Number(canvas.dataset.exportWidth) || canvas.clientWidth || 240,
     dpr = canvas.dataset.exportWidth
@@ -192,43 +217,32 @@ export function drawTrack(
       ctx.lineTo((i * width) / 5, height);
       ctx.stroke();
     }
-    ctx.strokeStyle =
-      track.kind === "CBL"
-        ? "#FF0000"
-        : track.kind === "GR"
-          ? dark
-            ? "#70df90"
-            : "#238544"
-          : dark
-            ? "#85cfff"
-            : "#246b91";
-    ctx.lineWidth = 1.15;
+    const style = curveStyle(track, dark, accessible);
+    ctx.strokeStyle = style.color;
+    ctx.fillStyle = style.color;
+    ctx.setLineDash(style.dash);
+    ctx.lineWidth = 1.35;
+    const limits = scaleLimits(track, scale);
     ctx.beginPath();
-    let started = false,
-      previousDepth = -Infinity;
-    for (const s of track.index.indices) {
-      const d = track.depth[s];
-      if (d < from || d > to) continue;
-      const value = data[s];
-      if (validity(value) !== "Válido") {
-        started = false;
-        continue;
+    for (const path of visiblePaths(
+      track,
+      from,
+      to,
+      Math.max(60, height * 2),
+      scale,
+    )) {
+      for (let i = 0; i < path.length; i++) {
+        const id = path[i],
+          x = 8 + fraction(data[id], limits, scale) * (width - 16),
+          dy = y(track.depth[id]);
+        if (i === 0) {
+          ctx.moveTo(x, dy);
+          if (path.length === 1) ctx.fillRect(x - 1, dy - 1, 2, 2);
+        } else ctx.lineTo(x, dy);
       }
-      const x =
-        8 +
-        ((value - track.range[0]) / (track.range[1] - track.range[0] || 1)) *
-          (width - 16);
-      if (started && d - previousDepth <= track.index.step * 2.5)
-        ctx.lineTo(x, y(d));
-      else {
-        ctx.moveTo(x, y(d));
-        ctx.fillStyle = ctx.strokeStyle;
-        ctx.fillRect(x - 1, y(d) - 1, 2, 2);
-      }
-      started = true;
-      previousDepth = d;
     }
     ctx.stroke();
+    ctx.setLineDash([]);
   }
   if (track.stride > 1) return; // Never tint the prescribed heatmap colors with a grid.
   ctx.strokeStyle = "#6d8a9620";

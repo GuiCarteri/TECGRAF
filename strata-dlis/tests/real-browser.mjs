@@ -1,4 +1,5 @@
 // Optional local regression: never writes file metadata or screenshots of user files.
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -45,6 +46,47 @@ try {
     const time = Date.now() - start;
     await page.locator(".track-plot canvas").nth(2).press("+");
     await page.locator(".language-selector select").selectOption("en");
+    let checked = 0;
+    if (process.env.DLIS_REFERENCE_PYTHON) {
+      await page.getByRole("button", { name: "Composite log" }).click();
+      const canvas = page.locator(".profile-column canvas").first();
+      await canvas.focus();
+      await canvas.press("ArrowDown");
+      const rows = page.locator(".profile-readings [data-channel]");
+      const requests = await rows.evaluateAll((nodes) =>
+        nodes.map((node) => ({ ...node.dataset })),
+      );
+      const reference = JSON.parse(
+        execFileSync(
+          process.env.DLIS_REFERENCE_PYTHON,
+          ["tests/profile-reference.py", path],
+          { input: JSON.stringify(requests), encoding: "utf8" },
+        ),
+      );
+      for (const [i, expected] of reference.entries()) {
+        assert.equal(requests[i].unit, expected.unit);
+        await page.getByLabel("Inspect depth (m)").fill(String(expected.depth));
+        await page
+          .getByRole("button", { name: "Inspect", exact: true })
+          .click();
+        const wanted =
+          new Intl.NumberFormat("en", { maximumSignificantDigits: 8 }).format(
+            expected.value,
+          ) +
+          " " +
+          expected.unit;
+        await page.waitForFunction(
+          ({ i, wanted }) =>
+            document.querySelectorAll(".profile-readings [data-channel] dd")[i]
+              ?.textContent === wanted,
+          { i, wanted },
+        );
+        checked++;
+      }
+      await page
+        .getByRole("button", { name: "Point reading", exact: true })
+        .click();
+    }
     await page.getByRole("button", { name: "Close file" }).click();
     assert.equal(await page.locator(".track-plot canvas").count(), 0);
     await page.locator(".language-selector select").selectOption("pt-BR");
@@ -53,6 +95,7 @@ try {
       bytes: statSync(path).size,
       open_and_plot_ms: time,
       plots: 4,
+      reference_points: checked,
       closed: true,
     });
   }
