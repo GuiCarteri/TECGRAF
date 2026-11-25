@@ -1,6 +1,6 @@
 "use client";
 import { useI18n } from "@/lib/i18n/provider";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   Layers3,
   LibraryBig,
@@ -14,6 +14,8 @@ import {
 import Link from "next/link";
 import type { UserProfile } from "@/lib/api-types";
 import { api } from "@/lib/api";
+import { themes, themeLabels, type Theme } from "@/lib/i18n";
+import { CommandPalette } from "./command-palette";
 import { LanguageSelector } from "./language-selector";
 import { Toaster } from "@/components/ui/sonner";
 // A navegação de documento permite o aviso nativo quando há marcações sem salvar.
@@ -28,6 +30,7 @@ export function LibraryLink({
 }) {
   return (
     <Link
+      aria-current={className === "active" ? "page" : undefined}
       href="/"
       prefetch={false}
       className={className}
@@ -44,6 +47,7 @@ export function LibraryLink({
     </Link>
   );
 }
+const subscribeHydration = () => () => {};
 export function Shell({
   children,
   active,
@@ -51,9 +55,14 @@ export function Shell({
   children: React.ReactNode;
   active: string;
 }) {
-  const { translate } = useI18n();
+  const { translate, theme, setTheme } = useI18n();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [menu, setMenu] = useState(false);
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false,
+  );
   useEffect(() => {
     api<{ user: UserProfile | null }>("me")
       .then((d) => setUser(d.user))
@@ -61,6 +70,9 @@ export function Shell({
   }, []);
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        {translate("Pular para o conteúdo")}
+      </a>
       <header className="topbar">
         <LibraryLink className="brand" preserveUnsaved={active === "viewer"}>
           <Layers3 size={28} />
@@ -70,6 +82,7 @@ export function Shell({
           </span>
         </LibraryLink>
         <nav
+          id="primary-navigation"
           aria-label={translate("Navegação principal")}
           className={menu ? "topnav open" : "topnav"}
         >
@@ -80,25 +93,54 @@ export function Shell({
             <LibraryBig size={17} />
             {translate("Biblioteca")}
           </LibraryLink>
-          <a className={active === "viewer" ? "active" : ""} href="/viewer">
+          <a
+            aria-current={active === "viewer" ? "page" : undefined}
+            className={active === "viewer" ? "active" : ""}
+            href="/viewer"
+          >
             <ScanLine size={17} />
             {translate("Visualizador")}
           </a>
-          <a className={active === "publish" ? "active" : ""} href="/publish">
+          <a
+            aria-current={active === "publish" ? "page" : undefined}
+            className={active === "publish" ? "active" : ""}
+            href="/publish"
+          >
             <Upload size={17} />
             {translate("Publicar DLIS")}
           </a>
           {user?.role === "admin" && (
-            <a href="/admin">
+            <a
+              href="/admin"
+              aria-current={active === "admin" ? "page" : undefined}
+            >
               <ShieldCheck size={17} />
               {translate("Administração")}
             </a>
           )}
         </nav>
         <div className="account-nav">
+          <CommandPalette admin={user?.role === "admin"} signedIn={!!user} />
           <LanguageSelector />
+          <select
+            className="theme-select"
+            disabled={!hydrated}
+            aria-label={translate("Aparência")}
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as Theme)}
+          >
+            {themes.map((option) => (
+              <option key={option} value={option}>
+                {translate(themeLabels[option])}
+              </option>
+            ))}
+          </select>
           {user ? (
-            <a className="user-link" href="/account">
+            <a
+              className="user-link"
+              href="/account"
+              aria-label={translate("Minha conta")}
+            >
               <UserRound size={18} />
               <span>{translate("Minha conta")}</span>
             </a>
@@ -115,13 +157,16 @@ export function Shell({
             className="menu-toggle"
             aria-label={translate("Abrir navegação")}
             aria-expanded={menu}
+            aria-controls="primary-navigation"
             onClick={() => setMenu(!menu)}
           >
             <Menu />
           </button>
         </div>
       </header>
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>
+        {children}
+      </main>
       <footer className="footer">
         <span>
           STRATA{" "}
@@ -132,7 +177,7 @@ export function Shell({
           <a href="/help">{translate("Guia técnico")}</a>
         </span>
       </footer>
-      <Toaster richColors position="bottom-right" />
+      <Toaster position="bottom-right" />
     </div>
   );
 }

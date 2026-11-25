@@ -132,7 +132,7 @@ async function call(
     if (pair.slice(i + 1)) jar.set(pair.slice(0, i), pair.slice(i + 1));
     else jar.delete(pair.slice(0, i));
   }
-  return { status: response.status, data: await response.json(), response };
+  return { status: response.status, data: await response.json().catch(() => null), response };
 }
 try {
   const db = await mf.getD1Database("DB");
@@ -424,6 +424,19 @@ try {
   });
   assert.equal(crossOrigin.status,403);
   console.log("PASS: native login without JS, existing short password, session cookies, safe redirects and CSRF");
+  assert.equal((await call("preferences","POST",{theme:"dark"})).status,401);
+  assert.equal((await call("preferences","POST",{locale:"invalid"},"reader")).status,400);
+  assert.equal((await call("preferences","POST",{theme:"light"},"reader",{Origin:"https://external.test"})).status,403);
+  assert.equal((await call("preferences","POST",{theme:"dark", locale:"es"},"reader")).status,204);
+  assert.equal((await call("preferences","POST",{locale:"en"},"reader")).status,204);
+  assert.equal((await call("preferences","POST",{theme:"light", locale:"pt-BR"},"other")).status,204);
+  for (const [actor,locale,theme] of [["reader","en","dark"],["other","pt-BR","light"]]) {
+    const cookie = [...jars.get(actor)].map(([k,v]) => k+"="+v).join("; ");
+    const html = await (await mf.dispatchFetch("https://strata.test/help",{headers:{Cookie:cookie+"; strata_locale=zh-CN; strata_theme=system"}})).text();
+    assert.match(html,new RegExp('<html[^>]*lang="'+locale+'"'));
+    assert.match(html,new RegExp('<html[^>]*data-theme="'+theme+'"'));
+  }
+  console.log("PASS Preferências por conta no SSR, atualização parcial e isolamento entre duas identidades.");
   await testDataModel({ call, db, storage });
   const oldAccess = jars.get("reader").get("strata_access");
   tokens.delete(oldAccess);

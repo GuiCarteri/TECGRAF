@@ -1,5 +1,5 @@
 "use client";
-import { useI18n } from "@/lib/i18n/provider";
+import { useI18n, useDarkTheme } from "@/lib/i18n/provider";
 import { RegionEditor } from "./regions";
 import type { Region } from "@/lib/dlis/regions";
 import { useRef, useEffect } from "react";
@@ -32,6 +32,7 @@ export function TrackCanvas({
   onRegions?: (r: Region[]) => void;
 }) {
   const { translate } = useI18n();
+  const dark = useDarkTheme();
   const ref = useRef<HTMLCanvasElement>(null),
     drag = useRef<{
       y: number;
@@ -45,7 +46,7 @@ export function TrackCanvas({
     const render = () => {
       cancelAnimationFrame(pending);
       pending = requestAnimationFrame(() => {
-        if (ref.current) drawTrack(ref.current, track, from, to, agc);
+        if (ref.current) drawTrack(ref.current, track, from, to, agc, undefined, dark);
       });
     };
     render();
@@ -56,7 +57,7 @@ export function TrackCanvas({
       cancelAnimationFrame(pending);
       cancelAnimationFrame(hoverFrame.current);
     };
-  }, [track, from, to, agc]);
+  }, [track, from, to, agc, dark]);
   const hit = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
     return locate(

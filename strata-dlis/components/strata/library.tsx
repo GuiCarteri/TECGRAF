@@ -34,7 +34,18 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 export function Library() {
-  const { translate, message, locale } = useI18n();
+  const { translate, message, locale, number, date } = useI18n();
+  function depthInterval(label: string | null) {
+    const match = label?.match(/^(-?\d+\.\d+)–(-?\d+\.\d+) m$/);
+    if (!match) return label || translate("Não disponível");
+    const digits = { minimumFractionDigits: 3, maximumFractionDigits: 3 };
+    return (
+      number(Number(match[1]), digits) +
+      "–" +
+      number(Number(match[2]), digits) +
+      " m"
+    );
+  }
   const [files, setFiles] = useState<CatalogFile[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -141,20 +152,20 @@ export function Library() {
       <div className="stats-strip">
         <div>
           <Database />
-          <strong>{files.length.toString().padStart(2, "0")}</strong>
+          <strong>{number(files.length, { minimumIntegerDigits: 2 })}</strong>
           <span>{translate("Arquivos publicados")}</span>
         </div>
         <div>
           <FolderOpen />
-          <strong>{sources.length.toString().padStart(2, "0")}</strong>
+          <strong>{number(sources.length, { minimumIntegerDigits: 2 })}</strong>
           <span>{translate("Coleções disponíveis")}</span>
         </div>
         <div>
           <Layers3 />
           <strong>
-            {new Set(files.map((f) => f.well).filter(Boolean)).size
-              .toString()
-              .padStart(2, "0")}
+            {number(new Set(files.map((f) => f.well).filter(Boolean)).size, {
+              minimumIntegerDigits: 2,
+            })}
           </strong>
           <span>{translate("Poços na biblioteca")}</span>
         </div>
@@ -409,9 +420,7 @@ export function Library() {
                           <dl>
                             <div>
                               <dt>{translate("Profundidade")}</dt>
-                              <dd>
-                                {f.depth_label || translate("Não disponível")}
-                              </dd>
+                              <dd>{depthInterval(f.depth_label)}</dd>
                             </div>
                             <div>
                               <dt>{translate("Arquivo")}</dt>
@@ -425,8 +434,8 @@ export function Library() {
                               </summary>
                               <dl>
                                 <div>
-                                  <dt>Frames</dt>
-                                  <dd>{f.summary.frameCount}</dd>
+                                  <dt>{translate("Frames")}</dt>
+                                  <dd>{number(f.summary.frameCount)}</dd>
                                 </div>
                                 <div>
                                   <dt>{translate("Amostras legíveis")}</dt>
@@ -455,7 +464,25 @@ export function Library() {
                                 </div>
                                 <div>
                                   <dt>{translate("Criação do arquivo")}</dt>
-                                  <dd>{f.summary.dates.join(", ") || "—"}</dd>
+                                  <dd>
+                                    {f.summary.dates
+                                      .map((value) =>
+                                        /^\d{4}-\d{2}-\d{2}T.*Z$/.test(value) &&
+                                        Number.isFinite(Date.parse(value))
+                                          ? date(value, {
+                                              year: "numeric",
+                                              month: "short",
+                                              day: "numeric",
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                              second: "2-digit",
+                                              timeZone: "UTC",
+                                              timeZoneName: "short",
+                                            })
+                                          : value,
+                                      )
+                                      .join(", ") || "—"}
+                                  </dd>
                                 </div>
                                 <div>
                                   <dt>{translate("Curva")}</dt>

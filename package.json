@@ -9,6 +9,7 @@
     "doctor": "node strata-dlis/scripts/doctor.mjs",
     "seed": "npm --prefix strata-dlis run seed",
     "lint": "npm --prefix strata-dlis run lint",
+    "i18n:check": "npm --prefix strata-dlis run i18n:check",
     "typecheck": "npm --prefix strata-dlis run typecheck",
     "test": "npm --prefix strata-dlis test",
     "build": "npm --prefix strata-dlis run build"

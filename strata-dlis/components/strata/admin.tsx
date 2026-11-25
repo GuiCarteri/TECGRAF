@@ -1,4 +1,5 @@
 "use client";
+import { LoadingPanel } from "./controls";
 import { useI18n } from "@/lib/i18n/provider";
 import { useState, useEffect } from "react";
 import { ShieldCheck, ArrowUpRight } from "lucide-react";
@@ -134,7 +135,7 @@ export function Admin() {
       {error ? (
         <div className="notice error">{message(error)}</div>
       ) : loading ? (
-        <div className="notice">{translate("Carregando…")}</div>
+        <LoadingPanel label={translate("Carregando…")} />
       ) : (
         <Tabs defaultValue="files">
           <TabsList>

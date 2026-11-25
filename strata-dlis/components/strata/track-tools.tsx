@@ -17,7 +17,7 @@ export function TrackTools({
   agc: boolean;
   onRange: (range: number[]) => void;
 }) {
-  const { translate, message } = useI18n();
+  const { translate, message, number } = useI18n();
   const [lo, setLo] = useState(String(track.range[0])),
     [hi, setHi] = useState(String(track.range[1]));
   const automatic = () => {
@@ -33,10 +33,11 @@ export function TrackTools({
         <div className="intensity-legend">
           <span>
             {track.kind === "USIT"
-              ? "0 · 0.3 · 2.6 · 10 MRayl"
+              ? [0, 0.3, 2.6, 10].map((value) => number(value)).join(" · ") +
+                " MRayl"
               : agc
                 ? translate("AGC relativo; não altera os dados")
-                : `${track.range[0].toPrecision(3)} — ${track.range[1].toPrecision(3)} ${track.channel.units}`}
+                : `${number(track.range[0], { maximumSignificantDigits: 3 })} — ${number(track.range[1], { maximumSignificantDigits: 3 })} ${track.channel.units}`}
           </span>
           <i
             style={{
@@ -58,9 +59,9 @@ export function TrackTools({
           <summary>{translate("Escala visual")}</summary>
           <div className="range-fields">
             <label>
-              Min
+              {translate("Mínimo")}
               <input
-                aria-label={`${track.kind} min`}
+                aria-label={`${track.kind} ${translate("Mínimo")}`}
                 type="number"
                 step="any"
                 value={lo}
@@ -68,9 +69,9 @@ export function TrackTools({
               />
             </label>
             <label>
-              Max
+              {translate("Máximo")}
               <input
-                aria-label={`${track.kind} max`}
+                aria-label={`${track.kind} ${translate("Máximo")}`}
                 type="number"
                 step="any"
                 value={hi}

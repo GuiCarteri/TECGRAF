@@ -118,6 +118,7 @@ export function drawTrack(
   to: number,
   agc: boolean,
   height = 620,
+  dark = false,
 ) {
   const width = Number(canvas.dataset.exportWidth) || canvas.clientWidth || 240,
     dpr = canvas.dataset.exportWidth
@@ -128,7 +129,8 @@ export function drawTrack(
   const ctx = canvas.getContext("2d")!;
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = track.stride > 1 ? PALETTE.invalid : "#fff";
+  ctx.fillStyle =
+    track.stride > 1 ? PALETTE.invalid : dark ? "#182a38" : "#fff";
   ctx.fillRect(0, 0, width, height);
   const span = to - from;
   if (!(span > 0)) return;
@@ -182,7 +184,7 @@ export function drawTrack(
       }
     }
   } else {
-    ctx.strokeStyle = "#e9eff2";
+    ctx.strokeStyle = dark ? "#354c59" : "#e9eff2";
     ctx.lineWidth = 1;
     for (let i = 1; i < 5; i++) {
       ctx.beginPath();
@@ -194,8 +196,12 @@ export function drawTrack(
       track.kind === "CBL"
         ? "#FF0000"
         : track.kind === "GR"
-          ? "#238544"
-          : "#246b91";
+          ? dark
+            ? "#70df90"
+            : "#238544"
+          : dark
+            ? "#85cfff"
+            : "#246b91";
     ctx.lineWidth = 1.15;
     ctx.beginPath();
     let started = false,

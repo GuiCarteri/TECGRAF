@@ -44,6 +44,20 @@ try {
     assert.ok(html.includes(label));
     console.log("PASS: initial SSR language " + locale);
   }
+  for (const [header,cookie,lang,theme] of [
+    ["fr;q=1, es-AR;q=0.9, en;q=0.3", "", "es", "system"],
+    ["en-GB", "strata_theme=dark", "en", "dark"],
+    ["en", "strata_locale=pt-BR; strata_theme=light", "pt-BR", "light"],
+  ]) {
+    const html = await (await fetch(root,{headers:{"accept-language":header,Cookie:cookie}})).text();
+    assert.match(html,new RegExp('<html[^>]*lang="'+lang+'"'));
+    assert.match(html,new RegExp('<html[^>]*data-theme="'+theme+'"'));
+  }
+  console.log("PASS Preferências e detecção do navegador no HTML antes de executar JavaScript.");
+  const missing = await fetch(root+"/route-inexistente",{headers:{"accept-language":"en"}});
+  const missingPage = await missing.text();
+  assert.equal(missing.status,404);
+  assert.ok(missingPage.includes("Page not found"));
   const guard = await fetch(root + "/viewer?file=abc", { redirect: "manual" });
   assert.equal(guard.status, 307);
   assert.match(guard.headers.get("location"), /login.*next/);

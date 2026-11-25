@@ -25,7 +25,7 @@ export function RegionEditor({
   regions: Region[];
   onChange: (r: Region[]) => void;
 }) {
-  const { translate: t } = useI18n();
+  const { translate: t, number } = useI18n();
   const [mode, setMode] = useState("navigate"),
     [label, setLabel] = useState("Revisar"),
     [draft, setDraft] = useState<ReturnType<typeof bounds> | null>(null);
@@ -109,9 +109,10 @@ export function RegionEditor({
     <>
       <div
         className="annotation-overlay"
+        role="group"
         style={{ pointerEvents: mode === "navigate" ? "none" : "auto" }}
         tabIndex={mode === "navigate" ? -1 : 0}
-        aria-label={t("Marcar região")}
+        aria-label={t("Marcar região") + " · " + track.channel.name}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             drag.current = null;
@@ -293,8 +294,17 @@ export function RegionEditor({
         </p>
         {selected.map((r) => (
           <div className="annotation-item" key={r.id}>
-            <b>{t(r.label as "Bom")}</b> {r.from.toFixed(3)}–{r.to.toFixed(3)} m
-            · [{r.first}–{r.last}]
+            <b>{t(r.label as "Bom")}</b>{" "}
+            {number(r.from, {
+              minimumFractionDigits: 3,
+              maximumFractionDigits: 3,
+            })}
+            –
+            {number(r.to, {
+              minimumFractionDigits: 3,
+              maximumFractionDigits: 3,
+            })}{" "}
+            m · [{r.first}–{r.last}]
             <select
               aria-label={t("Classe manual")}
               value={r.label}

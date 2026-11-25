@@ -8,13 +8,13 @@ import { languageNames, locales, parseLocale } from "@/lib/i18n";
  * The ordinary GET form remains usable if the browser's RSC bundle fails.
  */
 export function LanguageSelector() {
-  const { locale, setLocale, translate } = useI18n();
+  const { locale, setLocale, translate, syncAccount } = useI18n();
   const id = useId();
   return (
     <form
       className="language-selector"
       action="/api/locale"
-      method="get"
+      method={syncAccount ? "post" : "get"}
       onSubmit={(event) => {
         event.preventDefault();
         setLocale(

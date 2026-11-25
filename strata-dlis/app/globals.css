@@ -1,8 +1,16 @@
 @import "../styles/strata.css";
 @import "../styles/workspace.css";
+@import "../styles/preferences.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
+
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) { @slot; }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme="system"], [data-theme="system"] *) { @slot; }
+  }
+}
 
 @utility scrollbar-thin {
   scrollbar-width: thin;
@@ -20,27 +28,6 @@
   scrollbar-gutter: stable;
 }
 
-:root {
-  --background: #f5f7f9;
-  --foreground: #193448;
-  --card: #fff;
-  --card-foreground: #193448;
-  --popover: #fff;
-  --popover-foreground: #193448;
-  --primary: #126d78;
-  --primary-foreground: #fff;
-  --secondary: #eaf1f4;
-  --secondary-foreground: #193448;
-  --muted: #edf1f4;
-  --muted-foreground: #647789;
-  --accent: #e7f2f3;
-  --accent-foreground: #126d78;
-  --destructive: #b42336;
-  --border: #dce4e9;
-  --input: #d3dee5;
-  --ring: #138492;
-  --radius: 0.5rem;
-}
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -77,7 +64,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: Arial, Helvetica, sans-serif;
+  --font-sans: Inter, system-ui, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
@@ -86,5 +73,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Inter, "Segoe UI", "Noto Sans", "Noto Sans CJK SC", Arial, sans-serif;
+  font-family: var(--font-interface);
 }

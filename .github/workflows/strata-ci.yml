@@ -36,6 +36,7 @@ jobs:
         run: |
           npm run lint
           npm run typecheck
+          npm run i18n:check
       - name: Run unit, database and UI tests
         working-directory: strata-dlis
         run: |
@@ -65,3 +66,4 @@ jobs:
           npm run test:browser:scientific
           npm run test:browser:publications
           npm run test:phase2
+          npm run test:phase3

@@ -61,3 +61,34 @@ export function localizeMessage(locale: Locale, message: string): string {
     });
   return message;
 }
+
+export const themes = ["system", "light", "dark"] as const;
+export type Theme = (typeof themes)[number];
+export const themeLabels = {
+  system: "Tema automático",
+  light: "Tema claro",
+  dark: "Tema escuro",
+} as const;
+export function browserLocale(header: string | null): Locale {
+  const choices = (header || "")
+    .split(",")
+    .map((item) => {
+      const [tag, weight] = item
+        .trim()
+        .toLowerCase()
+        .split(/\s*;\s*q=/);
+      return {
+        language: tag.split("-")[0],
+        weight: weight === undefined ? 1 : Number(weight),
+      };
+    })
+    .filter((item) => item.weight > 0 && item.weight <= 1)
+    .sort((a, b) => b.weight - a.weight);
+  for (const choice of choices) {
+    const match = locales.find(
+      (locale) => locale.toLowerCase().split("-")[0] === choice.language,
+    );
+    if (match) return match;
+  }
+  return "pt-BR";
+}

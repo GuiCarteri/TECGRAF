@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { I18nProvider } from "@/lib/i18n/provider";
-import { parseLocale } from "@/lib/i18n";
+import { parseLocale, themes, type Theme } from "@/lib/i18n";
 import { Shell } from "@/components/strata/shell";
 import { Viewer } from "@/components/strata/viewer";
 import { Library } from "@/components/strata/library";
@@ -22,8 +22,9 @@ const pages: Record<string, React.ReactNode> = {
 const locale = parseLocale(
   document.cookie.match(/(?:^|; )strata_locale=([^;]+)/)?.[1],
 );
+const storedTheme = document.cookie.match(/(?:^|; )strata_theme=([^;]+)/)?.[1] as Theme;
 createRoot(document.getElementById("root")!).render(
-  <I18nProvider initialLocale={locale}>
+  <I18nProvider initialLocale={locale} initialTheme={themes.includes(storedTheme) ? storedTheme : "system"}>
     {route === "help" ? (
       <Help />
     ) : route === "login" ? (

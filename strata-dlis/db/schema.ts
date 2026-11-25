@@ -202,3 +202,9 @@ export const catalogIndex = sqliteTable("catalog_index", {
     .references(() => files.id, { onDelete: "cascade" }),
   summary: text("summary").notNull(),
 });
+
+export const interfacePreferences = sqliteTable("interface_preferences", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  locale: text("locale"),
+  theme: text("theme"),
+});

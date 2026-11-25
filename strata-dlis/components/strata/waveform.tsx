@@ -2,10 +2,11 @@
 import { useEffect, useRef } from "react";
 import { type Track } from "@/lib/dlis/plotting";
 import { validity } from "@/lib/dlis/core.js";
-import { useI18n } from "@/lib/i18n/provider";
+import { useI18n, useDarkTheme } from "@/lib/i18n/provider";
 export function Waveform({ track, sample }: { track: Track; sample: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const { translate } = useI18n();
+  const dark = useDarkTheme();
+  const { translate, number } = useI18n();
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
@@ -23,7 +24,7 @@ export function Waveform({ track, sample }: { track: Track; sample: number }) {
       }
     }
     if (!Number.isFinite(min)) return;
-    ctx.strokeStyle = "#116f7c";
+    ctx.strokeStyle = dark ? "#83dbe2" : "#116f7c";
     ctx.lineWidth = 2;
     ctx.beginPath();
     let open = false;
@@ -40,11 +41,15 @@ export function Waveform({ track, sample }: { track: Track; sample: number }) {
       open = true;
     }
     ctx.stroke();
-  }, [track, sample]);
+  }, [track, sample, dark]);
   return (
     <figure className="waveform">
       <figcaption>
-        {translate("Forma de onda original")} · {track.depth[sample].toFixed(3)}{" "}
+        {translate("Forma de onda original")} ·{" "}
+        {number(track.depth[sample], {
+          minimumFractionDigits: 3,
+          maximumFractionDigits: 3,
+        })}{" "}
         m
       </figcaption>
       <canvas

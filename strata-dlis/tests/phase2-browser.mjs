@@ -103,12 +103,12 @@ try {
     executablePath: env.PLAYWRIGHT_EXECUTABLE_PATH,
     args: ["--no-sandbox"],
   });
-  const ctx = await browser.newContext({
+  const ctx = await browser.newContext({ locale: "pt-BR",
       viewport: { width: 1440, height: 1050 },
     }),
     page = await ctx.newPage();
   tab = page;
-  const guest = await browser.newContext({
+  const guest = await browser.newContext({ locale: "pt-BR",
       viewport: { width: 1440, height: 1050 },
     }),
     library = await guest.newPage();
@@ -156,20 +156,27 @@ try {
       .get()
       .password_hash.startsWith("argon2id-v19-m19456-t2-p1$"),
   );
+  const storeTheme = page.waitForResponse(response => response.url().endsWith("/api/preferences") && response.request().method()==="POST");
+  await page.locator(".theme-select").selectOption("dark");
+  assert.equal((await storeTheme).status(),204);
   const state = await ctx.storageState();
   assert.ok(
     state.cookies
-      .filter((c) => c.name.startsWith("strata_") && c.name !== "strata_locale")
+      .filter((c) => ["strata_access", "strata_refresh"].includes(c.name))
       .every(
         (c) =>
           c.httpOnly && c.sameSite === "Lax" && c.expires > Date.now() / 1000,
       ),
   );
-  const restored = await browser.newContext({ storageState: state });
+  const restored = await browser.newContext({ locale: "pt-BR", storageState: state });
   assert.equal(
     (await (await restored.request.get(base + "/api/me")).json()).user.email,
     email,
   );
+  await restored.clearCookies({name:"strata_theme"});
+  const restoredPage = await restored.newPage();
+  await restoredPage.goto(base + "/account");
+  assert.equal(await restoredPage.locator("html").getAttribute("data-theme"),"dark");
   await restored.close();
   assert.equal((await api("auth/logout", {})).status(), 200);
   assert.equal(await me(), null);
@@ -363,6 +370,19 @@ try {
   await library.getByLabel("Curva", { exact: true }).fill("GR");
   await library.getByText("Metadados do DLIS", { exact: true }).click();
   assert.equal(await library.locator(".curve-thumbnail svg").count(), 1);
+  if (env.PHASE3_EVIDENCE) {
+    await mkdir(env.PHASE3_EVIDENCE, {recursive:true});
+    for (const theme of ["light","dark"]) {
+      await library.locator(".theme-select").selectOption(theme);
+      await library.evaluate(() => scrollTo(0,0));
+      await library.screenshot({path:join(env.PHASE3_EVIDENCE,"phase3-"+theme+".jpg"), quality:82,animations:"disabled", fullPage:true});
+    }
+    await library.keyboard.press("Control+k");
+    await library.getByRole("combobox",{name:"Buscar poço, página ou preferência"}).fill("Horizonte");
+    await library.getByRole("option",{name:/Horizonte/}).waitFor();
+    await library.screenshot({path:join(env.PHASE3_EVIDENCE,"phase3-palette.jpg"), quality:82});
+    await library.keyboard.press("Escape");
+  }
   if (env.PHASE2_SCREENSHOT)
     await library.screenshot({
       path: resolve(env.PHASE2_SCREENSHOT),

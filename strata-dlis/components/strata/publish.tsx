@@ -32,7 +32,7 @@ import {
 import { Thumbnail } from "./thumbnail";
 import { Pick } from "./controls";
 export function Publication() {
-  const { translate, message, locale } = useI18n();
+  const { translate, message, locale, number } = useI18n();
   const [user, setUser] = useState<UserProfile | null>(null),
     [accountLoaded, setAccountLoaded] = useState(false),
     [file, setFile] = useState<File | null>(null),
@@ -309,7 +309,7 @@ export function Publication() {
       )}
       {result ? (
         <div className="panel stack">
-          <FileCheck2 size={40} color="#237a74" />
+          <FileCheck2 size={40} color="var(--primary)" />
           <h2>{translate("Arquivo recebido para revisão.")}</h2>
           <p>
             {translate(
@@ -517,7 +517,12 @@ export function Publication() {
                     <TableCell>{v.samples ?? "—"}</TableCell>
                     <TableCell>
                       {v.depthRangeMeters
-                        ?.map((n: number) => n.toFixed(3))
+                        ?.map((n: number) =>
+                          number(n, {
+                            minimumFractionDigits: 3,
+                            maximumFractionDigits: 3,
+                          }),
+                        )
                         .join("–") || translate("Não disponível")}
                     </TableCell>
                     <TableCell>
@@ -527,7 +532,10 @@ export function Publication() {
                 ))}
               </TableBody>
             </Table>
-            <div className="hash" style={{ marginTop: 20, color: "#78909f" }}>
+            <div
+              className="hash"
+              style={{ marginTop: 20, color: "var(--muted-foreground)" }}
+            >
               SHA-256 · {meta?.hash}
             </div>
           </div>

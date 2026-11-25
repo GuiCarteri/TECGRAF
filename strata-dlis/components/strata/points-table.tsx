@@ -18,7 +18,7 @@ export function PointsTable({
   points: LogPoint[];
   onChange: (points: LogPoint[]) => void;
 }) {
-  const { translate, message } = useI18n();
+  const { translate, message, number } = useI18n();
   const update = (id: string, key: string, value: string) =>
     onChange(points.map((p) => (p.id === id ? { ...p, [key]: value } : p)));
   return (
@@ -47,24 +47,38 @@ export function PointsTable({
       <TableBody>
         {points.map((p) => (
           <TableRow key={p.id}>
-            <TableCell>{p.depth}</TableCell>
+            <TableCell>
+              {number(p.depth, { maximumSignificantDigits: 21 })}
+            </TableCell>
             <TableCell>
               {p.curve}
               <br />
               {p.channel}
             </TableCell>
             <TableCell>
-              {p.rawValue ?? p.rawRepresentation ?? translate("Não disponível")}
+              {typeof p.rawValue === "number"
+                ? number(p.rawValue, { maximumSignificantDigits: 21 })
+                : (p.rawRepresentation ?? translate("Não disponível"))}
             </TableCell>
             <TableCell>{p.unit}</TableCell>
             <TableCell>
-              {p.logicalFileIndex} / {p.frame}
+              {number(p.logicalFileIndex, { maximumSignificantDigits: 21 })} /{" "}
+              {p.frame}
             </TableCell>
             <TableCell>
-              {p.sampleIndex} / {p.componentIndex}
+              {number(p.sampleIndex, { maximumSignificantDigits: 21 })} /{" "}
+              {number(p.componentIndex, { maximumSignificantDigits: 21 })}
             </TableCell>
-            <TableCell>{p.timeUs ?? "—"}</TableCell>
-            <TableCell>{p.azimuth ?? "—"}</TableCell>
+            <TableCell>
+              {p.timeUs === null
+                ? "—"
+                : number(p.timeUs, { maximumSignificantDigits: 21 })}
+            </TableCell>
+            <TableCell>
+              {p.azimuth === null
+                ? "—"
+                : number(p.azimuth, { maximumSignificantDigits: 21 })}
+            </TableCell>
             <TableCell>
               {message(p.zone || "—")} / {message(p.microDebonding || "N/D")}
             </TableCell>

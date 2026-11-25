@@ -102,7 +102,7 @@ function depthNames(frame: FrameMetadata) {
 }
 
 export function Viewer({ file: remoteId }: { file?: string }) {
-  const { translate, message, locale } = useI18n();
+  const { translate, message, locale, number } = useI18n();
   const none = { value: "", label: translate("Nenhum canal selecionado") };
   const [file, setFile] = useState<File | null>(null),
     [meta, setMeta] = useState<DlisMetadata | null>(null),
@@ -129,7 +129,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
     }),
     [analyses, setAnalyses] = useState<SavedAnalysis[]>([]),
     [analysisId, setAnalysisId] = useState(""),
-    [analysisName, setAnalysisName] = useState("Minha análise"),
+    [analysisName, setAnalysisName] = useState<string | null>(null),
     [dirty, setDirty] = useState(false),
     [savedAt, setSavedAt] = useState(""),
     [exportFormat, setExportFormat] = useState("csv"),
@@ -500,7 +500,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
         id: analysisId || undefined,
         hash: meta.hash,
         fileName: file?.name,
-        name: analysisName,
+        name: analysisName ?? translate("Minha análise"),
         points,
         settings: {
           calibration,
@@ -612,6 +612,8 @@ export function Viewer({ file: remoteId }: { file?: string }) {
           <input
             ref={input}
             type="file"
+            aria-label={translate("Selecionar arquivo DLIS")}
+            tabIndex={-1}
             accept=".dlis,.DLIS"
             className="sr-only"
             onChange={(e) => requestFile(e.target.files?.[0])}
@@ -850,7 +852,10 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                     <div className="depth-axis">
                       {Array.from({ length: 11 }, (_, i) => (
                         <span key={i} style={{ top: i * 62 }}>
-                          {(from + ((to - from) * i) / 10).toFixed(2)}
+                          {number(from + ((to - from) * i) / 10, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </span>
                       ))}
                       {point && point.depth >= from && point.depth <= to && (
@@ -859,7 +864,10 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                             top: ((point.depth - from) / (to - from)) * 620,
                           }}
                         >
-                          {point.depth.toFixed(2)}
+                          {number(point.depth, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </b>
                       )}
                     </div>
@@ -916,12 +924,16 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                               <span>
                                 {t.stride > 1
                                   ? translate("Componente 0")
-                                  : t.range[0].toPrecision(4)}
+                                  : number(t.range[0], {
+                                      maximumSignificantDigits: 4,
+                                    })}
                               </span>
                               <span>
                                 {t.stride > 1
                                   ? t.stride - 1
-                                  : t.range[1].toPrecision(4)}
+                                  : number(t.range[1], {
+                                      maximumSignificantDigits: 4,
+                                    })}
                               </span>
                             </div>
                             <TrackCanvas
@@ -998,7 +1010,11 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                   <>
                     <h3>{point.channel}</h3>
                     <div className="reading-value">
-                      {point.rawValue ?? point.rawRepresentation}
+                      {point.rawValue === null
+                        ? point.rawRepresentation
+                        : number(point.rawValue, {
+                            maximumSignificantDigits: 21,
+                          })}
                       <small>{point.unit}</small>
                     </div>
                     {point.curve === "VDL" &&
@@ -1014,9 +1030,17 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                     </span>
                     <dl className="reading-dl">
                       {Object.entries({
-                        Profundidade: Number(point.depth).toFixed(4) + " m",
+                        Profundidade:
+                          number(point.depth, {
+                            minimumFractionDigits: 4,
+                            maximumFractionDigits: 4,
+                          }) + " m",
                         "Prof. original":
-                          point.depthRaw + " " + point.depthRawUnit,
+                          number(point.depthRaw, {
+                            maximumSignificantDigits: 21,
+                          }) +
+                          " " +
+                          point.depthRawUnit,
                         "Logical file":
                           point.logicalFile || point.logicalFileIndex,
                         Frame: point.frame,
@@ -1026,11 +1050,15 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                         "Tempo VDL":
                           point.timeUs === null
                             ? translate("Tempo não disponível nos metadados")
-                            : point.timeUs + " µs",
+                            : number(point.timeUs, {
+                                maximumSignificantDigits: 21,
+                              }) + " µs",
                         Azimute:
                           point.azimuth === null
                             ? translate("Azimute não disponível")
-                            : point.azimuth + "°",
+                            : number(point.azimuth, {
+                                maximumSignificantDigits: 21,
+                              }) + "°",
                         "Zona USIT": point.zone || translate("Não se aplica"),
                         "Micro-debonding":
                           point.microDebonding ||
@@ -1225,7 +1253,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
               <label className="inline-field">
                 {translate("Nome da análise")}{" "}
                 <input
-                  value={analysisName}
+                  value={analysisName ?? translate("Minha análise")}
                   onChange={(e) => {
                     setAnalysisName(e.target.value);
                     setDirty(true);
@@ -1253,7 +1281,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
                   setRegions([]);
                   setAnalysisId("");
                   setSavedAssessment(null);
-                  setAnalysisName("Nova análise");
+                  setAnalysisName(translate("Nova análise"));
                   setSavedAt("");
                   setDirty(false);
                 }}
@@ -1528,7 +1556,7 @@ export function Viewer({ file: remoteId }: { file?: string }) {
           </label>
           <div className="status-label">
             {translate("Origem:")}
-            {calibration.source}
+            {message(calibration.source)}
           </div>
           <div className="form-grid">
             <label className="form-field">

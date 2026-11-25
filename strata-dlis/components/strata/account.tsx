@@ -1,4 +1,5 @@
 "use client";
+import { LoadingPanel } from "./controls";
 import { useI18n } from "@/lib/i18n/provider";
 import { useState, useEffect } from "react";
 import {
@@ -66,7 +67,7 @@ export function Account() {
       </div>
       {error && <div className="notice error">{message(error)}</div>}
       {!data && !error ? (
-        <div className="notice">{translate("Carregando sua conta…")}</div>
+        <LoadingPanel label={translate("Carregando sua conta…")} />
       ) : (
         data && (
           <div className="account-grid">

@@ -99,7 +99,7 @@ try {
   await page.getByLabel("Observação do ponto").fill("Nota original 中文");
   const filename = await page.locator(".viewer-heading p").textContent();
   const before = await page.locator(".points-table tbody tr").textContent();
-  assert.ok(before.includes("2.25"));
+  assert.ok(before.includes(new Intl.NumberFormat("pt-BR").format(2.25)));
   const loads = workerLoads;
   for (const locale of ["en", "zh-CN", "es", "pt-BR"]) {
     await page.locator(".language-selector select").selectOption(locale);
@@ -116,10 +116,7 @@ try {
       await page.locator(".points-table input").inputValue(),
       "Nota original 中文",
     );
-    assert.match(
-      await page.locator(".points-table tbody tr").textContent(),
-      /2.25/,
-    );
+    assert.equal(await page.locator(".points-table tbody tr td").nth(2).textContent(), new Intl.NumberFormat(locale).format(2.25));
     assert.equal(workerLoads, loads, "language must not recreate worker");
   }
   await page.locator(".language-selector select").selectOption("zh-CN");
