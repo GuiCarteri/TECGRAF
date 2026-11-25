@@ -1,6 +1,6 @@
 import "./globals.css";
 import { interfaceSettings } from "@/lib/server/preferences";
-import { translate } from "@/lib/i18n";
+import { libraryTitle, translate } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/provider";
 
 export default async function RootLayout({
@@ -12,7 +12,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} data-theme={theme}>
       <head>
-        <title>{"STRATA · " + translate(locale, "Biblioteca DLIS")}</title>
+        <title>{libraryTitle(locale)}</title>
         <meta
           name="description"
           content={translate(locale, "Biblioteca e análise rastreável de arquivos DLIS RP66 V1.")}

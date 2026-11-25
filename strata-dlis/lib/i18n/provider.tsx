@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { authenticatedFetch } from "../api";
 import {
+  libraryTitle,
   translate,
   localizeMessage,
   type Theme,
@@ -94,7 +95,7 @@ export function I18nProvider({
   );
   useEffect(() => {
     document.documentElement.lang = locale;
-    document.title = "STRATA · " + translate(locale, "Biblioteca DLIS");
+    document.title = libraryTitle(locale);
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute(

@@ -30,6 +30,10 @@ export function translate(
     String(values[name] ?? match),
   );
 }
+export function libraryTitle(locale: Locale): string {
+  return "STRATA · " + translate(locale, "Biblioteca DLIS");
+}
+
 /** Only call for known UI messages/enums, never file metadata or user input. */
 export function localizeMessage(locale: Locale, message: string): string {
   if (Object.hasOwn(pt, message))
