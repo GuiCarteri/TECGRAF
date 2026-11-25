@@ -1,6 +1,8 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { I18nProvider } from "@/lib/i18n/provider";
+import { api } from "@/lib/api";
+import type { UserProfile } from "@/lib/api-types";
 import { parseLocale, themes, type Theme } from "@/lib/i18n";
 import { Shell } from "@/components/strata/shell";
 import { Viewer } from "@/components/strata/viewer";
@@ -12,12 +14,13 @@ import { Help } from "@/components/strata/help";
 import { LoginContent } from "@/components/auth/login-content";
 import "@/app/globals.css";
 const route = location.pathname.slice(1) || "library";
+const profile = ["account", "publish"].includes(route) ? (await api<{ user: UserProfile }>("me")).user : null;
 const pages: Record<string, React.ReactNode> = {
   library: <Library />,
   viewer: <Viewer />,
-  account: <Account />,
+  account: profile && <Account initialUser={profile} />,
   admin: <Admin />,
-  publish: <Publication />,
+  publish: profile && <Publication initialUser={profile} />,
 };
 const locale = parseLocale(
   document.cookie.match(/(?:^|; )strata_locale=([^;]+)/)?.[1],

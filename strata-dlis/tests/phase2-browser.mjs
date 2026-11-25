@@ -151,6 +151,27 @@ try {
   await page.locator('[autocomplete="one-time-code"]').fill(confirm);
   await page.getByRole("button", { name: "Confirmar código" }).click();
   await page.waitForURL(/\/account/);
+  const accountHtml = await (await ctx.request.get(base + "/account")).text();
+  assert.match(accountHtml, /<h2>Horizonte<\/h2>/);
+  const releaseHistory = Promise.withResolvers();
+  const interceptHistory = async route => {
+    await releaseHistory.promise;
+    await route.fulfill({ status: 503, json: { error: "NETWORK_ERROR" } });
+  };
+  await page.route("**/api/history", interceptHistory);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  try {
+    await page.getByRole("heading", { name: "Horizonte", exact: true }).waitFor();
+    await page.locator("header .user-link").waitFor();
+    await page.getByText(/Nenhuma análise salva/).waitFor();
+    await page.getByRole("tab", { name: "Histórico" }).click();
+    releaseHistory.resolve();
+    await page.getByRole("alert").waitFor();
+  } finally {
+    releaseHistory.resolve();
+    await page.unroute("**/api/history", interceptHistory);
+  }
+  console.log("PASS perfil no HTML autenticado e análises disponíveis com o histórico atrasado ou indisponível.");
   assert.equal((await me()).role, "user");
   assert.ok(
     db

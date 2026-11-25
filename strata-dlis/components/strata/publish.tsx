@@ -31,11 +31,9 @@ import {
 } from "@/lib/dlis/core.js";
 import { Thumbnail } from "./thumbnail";
 import { Pick } from "./controls";
-export function Publication() {
+export function Publication({ initialUser: user }: { initialUser: UserProfile }) {
   const { translate, message, locale, number } = useI18n();
-  const [user, setUser] = useState<UserProfile | null>(null),
-    [accountLoaded, setAccountLoaded] = useState(false),
-    [file, setFile] = useState<File | null>(null),
+  const [file, setFile] = useState<File | null>(null),
     [meta, setMeta] = useState<InspectedDlis | null>(null),
     [queue, setQueue] = useState<File[]>([]),
     [reports, setReports] = useState<{ name: string; reason: string }[]>([]),
@@ -65,10 +63,6 @@ export function Publication() {
     } | null>(null);
   useEffect(() => {
     stop.current = false;
-    api<{ user: UserProfile | null }>("me")
-      .then((d) => setUser(d.user))
-      .catch((e) => setError(e.message))
-      .finally(() => setAccountLoaded(true));
     return () => {
       stop.current = true;
       parser.current?.destroy();
@@ -216,7 +210,7 @@ export function Publication() {
       setBusy("");
     }
   }
-  if (accountLoaded && !mayPublish(user?.role))
+  if (!mayPublish(user.role))
     return (
       <div className="standard-page">
         <div className="page-heading">
@@ -346,7 +340,7 @@ export function Publication() {
             {translate("RP66 V1 · até 512 MB · nenhuma publicação automática")}
           </p>
           <input
-            disabled={!!busy || !accountLoaded}
+            disabled={!!busy}
             ref={input}
             type="file"
             accept=".dlis,.DLIS"

@@ -1,7 +1,7 @@
 let refreshing: Promise<boolean> | null = null;
 async function refresh() {
   if (!refreshing)
-    refreshing = fetch("/api/auth/refresh", { method: "POST" })
+    refreshing = fetch("/api/auth/refresh", { method: "POST", signal: AbortSignal.timeout(15000) })
       .then((r) => r.ok)
       .catch(() => false)
       .finally(() => {

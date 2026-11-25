@@ -1,12 +1,14 @@
 import type { UserProfile } from "../api-types";
 import { env } from "cloudflare:workers";
-import { providerUser } from "./provider";
+import { providerUser, type Identity } from "./provider";
 import { HttpError } from "./errors";
 export { HttpError } from "./errors";
 import { query } from "./db";
 export async function currentUser() {
   const identity = await providerUser();
-  if (!identity) return null;
+  return identity ? profileForIdentity(identity) : null;
+}
+export async function profileForIdentity(identity: Identity) {
   const admins = String(env.ADMIN_USER_IDS || "")
     .split(",")
     .map((s) => s.trim());
@@ -21,10 +23,12 @@ export async function currentUser() {
     isAdmin ? "admin" : "user",
     new Date().toISOString(),
   ).run();
-  return await query(
-    "SELECT * FROM users WHERE id=?",
+  const profile = await query(
+    "SELECT id, name, email, role FROM users WHERE id=?",
     identity.userId,
   ).first<UserProfile>();
+  if (!profile) throw new Error("Perfil indisponível.");
+  return profile;
 }
 export async function requireUser(roles?: string[]) {
   const user = await currentUser();

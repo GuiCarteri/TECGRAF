@@ -51,12 +51,15 @@ const subscribeHydration = () => () => {};
 export function Shell({
   children,
   active,
+  initialUser,
 }: {
   children: React.ReactNode;
   active: string;
+  initialUser?: UserProfile;
 }) {
   const { translate, theme, setTheme } = useI18n();
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [fetchedUser, setUser] = useState<UserProfile | null>(initialUser ?? null);
+  const user = initialUser ?? fetchedUser;
   const [menu, setMenu] = useState(false);
   const hydrated = useSyncExternalStore(
     subscribeHydration,
@@ -64,10 +67,11 @@ export function Shell({
     () => false,
   );
   useEffect(() => {
+    if (initialUser) return;
     api<{ user: UserProfile | null }>("me")
       .then((d) => setUser(d.user))
       .catch(() => {});
-  }, []);
+  }, [initialUser]);
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
